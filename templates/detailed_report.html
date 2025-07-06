@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+
+{% block title %}Relatório Detalhado - Livro Caixa{% endblock %}
+
+{% block content %}
+<header class="mb-8 flex justify-between items-center">
+    <div>
+        <h1 class="text-4xl font-bold text-gray-900">Relatório Detalhado</h1>
+        <p class="text-gray-600">Todas as transações do período de {{ start_date }} a {{ end_date }}.</p>
+    </div>
+    <div class="noprint flex gap-4">
+        <button onclick="window.print()" class="bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-gray-700 transition duration-300">
+            Imprimir Relatório
+        </button>
+        <a href="{{ url_for('reports') }}" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+            Voltar
+        </a>
+    </div>
+</header>
+
+<!-- Filtro de Período (não será impresso) -->
+<section class="bg-white p-6 rounded-xl shadow-md mb-8 border border-gray-200 noprint">
+    <form method="get" action="{{ url_for('detailed_report') }}">
+        <div class="flex flex-col md:flex-row items-center gap-4">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-700">Data de Início</label>
+                <input type="date" name="start_date" id="start_date" value="{{ start_date }}" class="mt-1 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-gray-700">Data de Fim</label>
+                <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="mt-1 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="self-end">
+                <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition duration-300">Gerar Relatório</button>
+            </div>
+        </div>
+    </form>
+</section>
+
+<!-- Tabela Detalhada -->
+<section class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pagamento</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for tx in transactions %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tx.description }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ 'text-green-600' if tx.type == 'receita' else 'text-red-600' }}">
+                        {{ '+ ' if tx.type == 'receita' else '- ' }}R$ {{ "%.2f"|format(tx.amount) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.type|capitalize }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.category }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.due_date.strftime('%d/%m/%Y') if tx.due_date else 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') if tx.date else '---' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {{ 'bg-green-100 text-green-800' if tx.status in ['pago', 'recebido'] else 'bg-yellow-100 text-yellow-800' }}">
+                            {{ tx.status|capitalize }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">Nenhuma transação no período selecionado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-100">
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase">Total Entradas (Pagas):</td>
+                    <td class="px-6 py-4 text-left text-sm font-bold text-green-600">R$ {{ "%.2f"|format(total_income) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase">Total Saídas (Pagas):</td>
+                    <td class="px-6 py-4 text-left text-sm font-bold text-red-600">R$ {{ "%.2f"|format(total_expense) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase">Saldo do Período:</td>
+                    <td class="px-6 py-4 text-left text-sm font-bold {{ 'text-blue-600' if balance >= 0 else 'text-orange-600' }}">R$ {{ "%.2f"|format(balance) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</section>
+{% endblock %}

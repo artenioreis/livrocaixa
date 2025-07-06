@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Livro Caixa{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal { display: none; }
+        .modal.is-open { display: flex; }
+        .dropdown:hover .dropdown-menu { display: block; }
+        
+        @media print {
+            .noprint { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <nav class="bg-white shadow-md noprint">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="text-2xl font-bold text-blue-600">Livro Caixa</a>
+                </div>
+                <div class="flex items-center">
+                    {% if session.username %}
+                        <a href="{{ url_for('index') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                        <a href="{{ url_for('reports') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Relatórios</a>
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('manage_users') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Gerenciar Usuários</a>
+                        {% endif %}
+                        <span class="text-gray-500 mx-4">|</span>
+                        <span class="text-gray-700 font-medium mr-3">Olá, {{ session.username }}</span>
+                        <a href="{{ url_for('logout') }}" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 text-sm">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-sm">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <div class="noprint">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="p-4 mb-4 text-sm rounded-lg
+                            {% if category == 'danger' %} bg-red-100 text-red-700
+                            {% elif category == 'success' %} bg-green-100 text-green-700
+                            {% else %} bg-blue-100 text-blue-700 {% endif %}"
+                            role="alert">
+                            {{ message|safe }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function openModal(modalId) {
+            const openModals = document.querySelectorAll('.modal.is-open');
+            openModals.forEach(modal => modal.classList.remove('is-open'));
+            document.getElementById(modalId).classList.add('is-open');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('is-open');
+        }
+        
+        window.addEventListener('click', function(event) {
+            const modal = document.querySelector('.modal.is-open');
+            if (modal && event.target === modal) {
+                closeModal(modal.id);
+            }
+        });
+        
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.querySelector('.modal.is-open');
+                if (modal) {
+                    closeModal(modal.id);
+                }
+            }
+        });
+
+        function openEditModal(id, description, amount, dueDate, paymentDate, type, category, status) {
+            document.getElementById('editTransactionForm').action = '/edit/' + id;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_amount').value = amount;
+            document.getElementById('edit_due_date').value = dueDate;
+            document.getElementById('edit_date').value = paymentDate;
+            document.getElementById('edit_type').value = type;
+            document.getElementById('edit_category').value = category;
+            document.getElementById('edit_is_paid').checked = (status === 'pago' || status === 'recebido');
+            openModal('editTransactionModal');
+        }
+    </script>
+</body>
+</html>

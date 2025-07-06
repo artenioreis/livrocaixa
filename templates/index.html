@@ -1,0 +1,261 @@
+{% extends "layout.html" %}
+
+{% block title %}Livro Caixa{% endblock %}
+
+{% block content %}
+<header class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-900">Dashboard Financeiro</h1>
+    <p class="text-gray-600">Sua visão geral financeira.</p>
+</header>
+
+<!-- Seção do Dashboard: exibe os saldos -->
+<section id="dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-500 mb-2">Saldo Atual</h2>
+        <p class="text-3xl font-bold {{ 'text-green-600' if balance >= 0 else 'text-red-600' }}">R$ {{ "%.2f"|format(balance) }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-500 mb-2">Total de Entradas</h2>
+        <p class="text-3xl font-bold text-blue-600">R$ {{ "%.2f"|format(total_income) }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-500 mb-2">Total de Saídas</h2>
+        <p class="text-3xl font-bold text-orange-600">R$ {{ "%.2f"|format(total_expense) }}</p>
+    </div>
+</section>
+
+<!-- Seção de Ações e Filtros -->
+<section class="bg-white p-6 rounded-xl shadow-md mb-8 border border-gray-200">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex gap-4">
+            <button onclick="openModal('addTransactionModal')" class="w-full md:w-auto bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+                + Lançamento
+            </button>
+            <div class="relative dropdown">
+                <button class="bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg hover:bg-gray-800 transition duration-300">
+                    Cadastros
+                </button>
+                <div class="dropdown-menu absolute hidden bg-white rounded-md shadow-xl z-20 mt-1 w-48">
+                    <a href="#" onclick="openModal('addCategoryModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Categoria</a>
+                    <a href="#" onclick="openModal('addAccountModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Conta</a>
+                    <a href="#" onclick="openModal('addCreditCardModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cartão de Crédito</a>
+                    <a href="#" onclick="openModal('addPaymentMethodModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Forma de Pagamento</a>
+                    <a href="#" onclick="openModal('addClientModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cliente</a>
+                    <a href="#" onclick="openModal('addSupplierModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Fornecedor</a>
+                </div>
+            </div>
+        </div>
+        <form method="get" action="/" class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+            <input type="date" name="filter_date" value="{{ request.args.get('filter_date', '') }}" class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            <select name="filter_type" class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Todos os Tipos</option>
+                <option value="receita" {% if request.args.get('filter_type') == 'receita' %}selected{% endif %}>Receita</option>
+                <option value="despesa" {% if request.args.get('filter_type') == 'despesa' %}selected{% endif %}>Despesa</option>
+            </select>
+            <select name="filter_status" class="border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Todos os Status</option>
+                <option value="pago" {% if request.args.get('filter_status') == 'pago' %}selected{% endif %}>Pago/Recebido</option>
+                <option value="pendente" {% if request.args.get('filter_status') == 'pendente' %}selected{% endif %}>Pendente</option>
+            </select>
+            <button type="submit" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">Filtrar</button>
+            <a href="/" class="bg-gray-200 text-gray-700 text-center font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">Limpar</a>
+        </form>
+    </div>
+</section>
+
+<!-- Tabela de Transações -->
+<section id="transactions" class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+    <div class="p-6">
+        <h2 class="text-2xl font-bold text-gray-800">Últimos Lançamentos</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pagamento</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for tx in transactions %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tx.description }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ 'text-green-600' if tx.type == 'receita' else 'text-red-600' }}">
+                        {{ '+ ' if tx.type == 'receita' else '- ' }}R$ {{ "%.2f"|format(tx.amount) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.type|capitalize }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                       <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                         {{ tx.category }}
+                       </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.due_date.strftime('%d/%m/%Y') if tx.due_date else 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') if tx.date else '---' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {{ 'bg-green-100 text-green-800' if tx.status in ['pago', 'recebido'] else 'bg-yellow-100 text-yellow-800' }}">
+                            {{ tx.status|capitalize }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center">
+                        <a href="#" onclick="openEditModal('{{ tx.id }}', '{{ tx.description }}', '{{ tx.amount }}', '{{ tx.due_date.strftime('%Y-%m-%d') if tx.due_date else '' }}', '{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}', '{{ tx.type }}', '{{ tx.category }}', '{{ tx.status }}')" class="text-blue-600 hover:text-blue-900 mr-3">Editar</a>
+                        {% if tx.status == 'pendente' %}
+                        <a href="{{ url_for('update_status', tx_id=tx.id) }}" class="text-green-600 hover:text-green-900 mr-3">Pagar</a>
+                        {% endif %}
+                        <a href="{{ url_for('delete_transaction', tx_id=tx.id) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir esta transação?');">Excluir</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="px-6 py-12 text-center text-gray-500">Nenhuma transação encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Modais de Cadastro -->
+{% macro form_modal(id, title, action_url, field_label) %}
+<div id="{{ id }}" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+        <h2 class="text-2xl font-bold mb-6">{{ title }}</h2>
+        <form action="{{ action_url }}" method="post">
+            <div class="mb-4">
+                <label for="{{ id }}_name" class="block text-sm font-medium text-gray-700">{{ field_label }}</label>
+                <input type="text" id="{{ id }}_name" name="name" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex justify-end gap-4">
+                <button type="button" onclick="closeModal('{{ id }}')" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endmacro %}
+
+{{ form_modal('addCategoryModal', 'Nova Categoria', url_for('add_category'), 'Nome da Categoria') }}
+{{ form_modal('addAccountModal', 'Nova Conta', url_for('add_account'), 'Nome da Conta') }}
+{{ form_modal('addCreditCardModal', 'Novo Cartão de Crédito', url_for('add_credit_card'), 'Nome do Cartão') }}
+{{ form_modal('addPaymentMethodModal', 'Nova Forma de Pagamento', url_for('add_payment_method'), 'Nome da Forma de Pagamento') }}
+{{ form_modal('addClientModal', 'Novo Cliente', url_for('add_client'), 'Nome do Cliente') }}
+{{ form_modal('addSupplierModal', 'Novo Fornecedor', url_for('add_supplier'), 'Nome do Fornecedor') }}
+
+<!-- Modal para Adicionar Lançamento -->
+<div id="addTransactionModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+        <h2 class="text-2xl font-bold mb-6">Novo Lançamento</h2>
+        <form action="{{ url_for('add_transaction') }}" method="post">
+            <div class="mb-4">
+                <label for="description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                <input type="text" id="description" name="description" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="amount" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                <input type="number" step="0.01" id="amount" name="amount" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="due_date" class="block text-sm font-medium text-gray-700">Data de Vencimento</label>
+                    <input type="date" id="due_date" name="due_date" required value="{{ today_date }}" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700">Data do Pagamento</label>
+                    <input type="date" id="date" name="date" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="type" class="block text-sm font-medium text-gray-700">Tipo</label>
+                    <select id="type" name="type" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="despesa">Despesa</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700">Categoria</label>
+                    <select id="category" name="category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        {% for cat in categories %}
+                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mb-6">
+                <div class="flex items-center">
+                    <input id="is_paid" name="is_paid" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="is_paid" class="ml-2 block text-sm text-gray-900">
+                        Marcar como pago/recebido
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4">
+                <button type="button" onclick="closeModal('addTransactionModal')" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Editar Lançamento -->
+<div id="editTransactionModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+        <h2 class="text-2xl font-bold mb-6">Editar Lançamento</h2>
+        <form id="editTransactionForm" method="post"> <!-- action é definida via JS -->
+            <div class="mb-4">
+                <label for="edit_description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                <input type="text" id="edit_description" name="description" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="edit_amount" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                <input type="number" step="0.01" id="edit_amount" name="amount" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="edit_due_date" class="block text-sm font-medium text-gray-700">Data de Vencimento</label>
+                    <input type="date" id="edit_due_date" name="due_date" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="edit_date" class="block text-sm font-medium text-gray-700">Data do Pagamento</label>
+                    <input type="date" id="edit_date" name="date" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="edit_type" class="block text-sm font-medium text-gray-700">Tipo</label>
+                    <select id="edit_type" name="type" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="despesa">Despesa</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="edit_category" class="block text-sm font-medium text-gray-700">Categoria</label>
+                    <select id="edit_category" name="category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        {% for cat in categories %}
+                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mb-6">
+                <div class="flex items-center">
+                    <input id="edit_is_paid" name="is_paid" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="edit_is_paid" class="ml-2 block text-sm text-gray-900">
+                        Marcar como pago/recebido
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4">
+                <button type="button" onclick="closeModal('editTransactionModal')" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
