@@ -65,7 +65,6 @@ def login_required(f):
         if 'username' not in session:
             flash("Por favor, faça login para acessar esta página.", "warning")
             return redirect(url_for('login'))
-        # CORREÇÃO: Garante que o usuário da sessão ainda existe nos dados
         if session['username'] not in data:
             flash("Sua sessão é inválida. Por favor, faça login novamente.", "danger")
             session.clear()
@@ -80,7 +79,6 @@ def admin_required(f):
             flash("Por favor, faça login para acessar esta página.", "warning")
             return redirect(url_for('login'))
         username = session['username']
-        # CORREÇÃO: Acesso seguro aos dados do usuário
         user_data = data.get(username, {})
         if user_data.get('role') != 'admin':
             flash("Você não tem permissão para acessar esta página.", "danger")
@@ -267,6 +265,7 @@ def reports():
         end_date_inclusive = end_date.replace(hour=23, minute=59, second=59)
         for t in user_data.get('transactions', []):
             payment_date = parse_date(t.get('date'))
+            # CORREÇÃO: Verifica se a data de pagamento existe antes de comparar
             if payment_date and start_date <= payment_date <= end_date_inclusive:
                 report_transactions.append(t)
 
@@ -301,11 +300,16 @@ def detailed_report():
     report_transactions = []
     if start_date and end_date:
         end_date_inclusive = end_date.replace(hour=23, minute=59, second=59)
-        report_transactions = [
-            t for t in user_data.get('transactions', []) 
-            if (parse_date(t.get('date')) and start_date <= parse_date(t.get('date')) <= end_date_inclusive) or 
-               (parse_date(t.get('due_date')) and start_date <= parse_date(t.get('due_date')) <= end_date_inclusive)
-        ]
+        for t in user_data.get('transactions', []):
+            payment_date = parse_date(t.get('date'))
+            due_date = parse_date(t.get('due_date'))
+            
+            # CORREÇÃO: Verifica se as datas existem antes de comparar
+            payment_in_range = payment_date and start_date <= payment_date <= end_date_inclusive
+            due_in_range = due_date and start_date <= due_date <= end_date_inclusive
+
+            if payment_in_range or due_in_range:
+                report_transactions.append(t)
 
     sorted_transactions = sorted(report_transactions, key=lambda t: parse_date(t.get('due_date')) or datetime.min)
     

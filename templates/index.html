@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 
-{% block title %}Livro Caixa{% endblock %}
+{% block title %} Livro Caixa{% endblock %}
 
 {% block content %}
 <header class="mb-8">
-    <h1 class="text-4xl font-bold text-gray-900">Dashboard Financeiro</h1>
+    <h1 class="text-4xl font-bold text-gray-900">Financeiro</h1>
     <p class="text-gray-600">Sua visão geral financeira.</p>
 </header>
 
@@ -37,9 +37,6 @@
                 </button>
                 <div class="dropdown-menu absolute hidden bg-white rounded-md shadow-xl z-20 mt-1 w-48">
                     <a href="#" onclick="openModal('addCategoryModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Categoria</a>
-                    <a href="#" onclick="openModal('addAccountModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Conta</a>
-                    <a href="#" onclick="openModal('addCreditCardModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cartão de Crédito</a>
-                    <a href="#" onclick="openModal('addPaymentMethodModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Forma de Pagamento</a>
                     <a href="#" onclick="openModal('addClientModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cliente</a>
                     <a href="#" onclick="openModal('addSupplierModal')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Fornecedor</a>
                 </div>
@@ -74,8 +71,7 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente/Fornecedor</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pagamento</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -89,12 +85,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ 'text-green-600' if tx.type == 'receita' else 'text-red-600' }}">
                         {{ '+ ' if tx.type == 'receita' else '- ' }}R$ {{ "%.2f"|format(tx.amount) }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.type|capitalize }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                       <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                         {{ tx.category }}
-                       </span>
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.client_supplier or '---' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.due_date.strftime('%d/%m/%Y') if tx.due_date else 'N/A' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') if tx.date else '---' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -104,7 +95,7 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center">
-                        <a href="#" onclick="openEditModal('{{ tx.id }}', '{{ tx.description }}', '{{ tx.amount }}', '{{ tx.due_date.strftime('%Y-%m-%d') if tx.due_date else '' }}', '{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}', '{{ tx.type }}', '{{ tx.category }}', '{{ tx.status }}')" class="text-blue-600 hover:text-blue-900 mr-3">Editar</a>
+                        <a href="#" onclick="openEditModal('{{ tx.id }}', '{{ tx.description }}', '{{ tx.amount }}', '{{ tx.due_date.strftime('%Y-%m-%d') if tx.due_date else '' }}', '{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}', '{{ tx.type }}', '{{ tx.category }}', '{{ tx.status }}', '{{ tx.client_supplier or '' }}')" class="text-blue-600 hover:text-blue-900 mr-3">Editar</a>
                         {% if tx.status == 'pendente' %}
                         <a href="{{ url_for('update_status', tx_id=tx.id) }}" class="text-green-600 hover:text-green-900 mr-3">Pagar</a>
                         {% endif %}
@@ -124,11 +115,11 @@
 <!-- Modais de Cadastro -->
 {% macro form_modal(id, title, action_url, field_label) %}
 <div id="{{ id }}" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl p-8">
         <h2 class="text-2xl font-bold mb-6">{{ title }}</h2>
         <form action="{{ action_url }}" method="post">
             <div class="mb-4">
-                <label for="{{ id }}_name" class="block text-sm font-medium text-gray-700">{{ field_label }}</label>
+                <label for="{{ id }}_name" class="block text-base font-semibold text-gray-700">{{ field_label }}</label>
                 <input type="text" id="{{ id }}_name" name="name" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="flex justify-end gap-4">
@@ -141,51 +132,64 @@
 {% endmacro %}
 
 {{ form_modal('addCategoryModal', 'Nova Categoria', url_for('add_category'), 'Nome da Categoria') }}
-{{ form_modal('addAccountModal', 'Nova Conta', url_for('add_account'), 'Nome da Conta') }}
-{{ form_modal('addCreditCardModal', 'Novo Cartão de Crédito', url_for('add_credit_card'), 'Nome do Cartão') }}
-{{ form_modal('addPaymentMethodModal', 'Nova Forma de Pagamento', url_for('add_payment_method'), 'Nome da Forma de Pagamento') }}
 {{ form_modal('addClientModal', 'Novo Cliente', url_for('add_client'), 'Nome do Cliente') }}
 {{ form_modal('addSupplierModal', 'Novo Fornecedor', url_for('add_supplier'), 'Nome do Fornecedor') }}
 
 <!-- Modal para Adicionar Lançamento -->
 <div id="addTransactionModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl p-8">
         <h2 class="text-2xl font-bold mb-6">Novo Lançamento</h2>
         <form action="{{ url_for('add_transaction') }}" method="post">
             <div class="mb-4">
-                <label for="description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                <label for="description" class="block text-base font-semibold text-gray-700">Descrição</label>
                 <input type="text" id="description" name="description" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="mb-4">
-                <label for="amount" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                <label for="amount" class="block text-base font-semibold text-gray-700">Valor (R$)</label>
                 <input type="number" step="0.01" id="amount" name="amount" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label for="due_date" class="block text-sm font-medium text-gray-700">Data de Vencimento</label>
+                    <label for="due_date" class="block text-base font-semibold text-gray-700">Data de Vencimento</label>
                     <input type="date" id="due_date" name="due_date" required value="{{ today_date }}" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
-                    <label for="date" class="block text-sm font-medium text-gray-700">Data do Pagamento</label>
+                    <label for="date" class="block text-base font-semibold text-gray-700">Data do Pagamento</label>
                     <input type="date" id="date" name="date" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label for="type" class="block text-sm font-medium text-gray-700">Tipo</label>
+                    <label for="type" class="block text-base font-semibold text-gray-700">Tipo</label>
                     <select id="type" name="type" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         <option value="despesa">Despesa</option>
                         <option value="receita">Receita</option>
                     </select>
                 </div>
                 <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700">Categoria</label>
+                    <label for="category" class="block text-base font-semibold text-gray-700">Categoria</label>
                     <select id="category" name="category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         {% for cat in categories %}
                         <option value="{{ cat.name }}">{{ cat.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+            <div class="mb-4">
+                <label for="client_supplier" class="block text-base font-semibold text-gray-700">Cliente / Fornecedor</label>
+                <select id="client_supplier" name="client_supplier" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Nenhum</option>
+                    <optgroup label="Clientes">
+                        {% for client in clients %}
+                        <option value="{{ client.name }}">{{ client.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Fornecedores">
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
             </div>
             <div class="mb-6">
                 <div class="flex items-center">
@@ -205,43 +209,59 @@
 
 <!-- Modal para Editar Lançamento -->
 <div id="editTransactionModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl p-8">
         <h2 class="text-2xl font-bold mb-6">Editar Lançamento</h2>
         <form id="editTransactionForm" method="post"> <!-- action é definida via JS -->
             <div class="mb-4">
-                <label for="edit_description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                <label for="edit_description" class="block text-base font-semibold text-gray-700">Descrição</label>
                 <input type="text" id="edit_description" name="description" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="mb-4">
-                <label for="edit_amount" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                <label for="edit_amount" class="block text-base font-semibold text-gray-700">Valor (R$)</label>
                 <input type="number" step="0.01" id="edit_amount" name="amount" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label for="edit_due_date" class="block text-sm font-medium text-gray-700">Data de Vencimento</label>
+                    <label for="edit_due_date" class="block text-base font-semibold text-gray-700">Data de Vencimento</label>
                     <input type="date" id="edit_due_date" name="due_date" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
-                    <label for="edit_date" class="block text-sm font-medium text-gray-700">Data do Pagamento</label>
+                    <label for="edit_date" class="block text-base font-semibold text-gray-700">Data do Pagamento</label>
                     <input type="date" id="edit_date" name="date" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label for="edit_type" class="block text-sm font-medium text-gray-700">Tipo</label>
+                    <label for="edit_type" class="block text-base font-semibold text-gray-700">Tipo</label>
                     <select id="edit_type" name="type" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         <option value="despesa">Despesa</option>
                         <option value="receita">Receita</option>
                     </select>
                 </div>
                 <div>
-                    <label for="edit_category" class="block text-sm font-medium text-gray-700">Categoria</label>
+                    <label for="edit_category" class="block text-base font-semibold text-gray-700">Categoria</label>
                     <select id="edit_category" name="category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         {% for cat in categories %}
                         <option value="{{ cat.name }}">{{ cat.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+            <div class="mb-4">
+                <label for="edit_client_supplier" class="block text-base font-semibold text-gray-700">Cliente / Fornecedor</label>
+                <select id="edit_client_supplier" name="client_supplier" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Nenhum</option>
+                    <optgroup label="Clientes">
+                        {% for client in clients %}
+                        <option value="{{ client.name }}">{{ client.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Fornecedores">
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
             </div>
             <div class="mb-6">
                 <div class="flex items-center">
