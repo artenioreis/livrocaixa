@@ -5,7 +5,7 @@
 {% block content %}
 <header class="mb-8">
     <h1 class="text-4xl font-bold text-gray-900">Dashboard Financeiro</h1>
-    <p class="text-gray-600">Sua visão geral financeira.</p>
+    <p class="text-gray-600">A sua visão geral financeira.</p>
 </header>
 
 <!-- Seção do Dashboard: exibe os saldos -->
@@ -21,6 +21,24 @@
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
         <h2 class="text-lg font-semibold text-gray-500 mb-2">Total de Saídas</h2>
         <p class="text-3xl font-bold text-orange-600">R$ {{ "%.2f"|format(total_expense) }}</p>
+    </div>
+</section>
+
+<!-- Seção dos Gráficos -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- CORREÇÃO: Adicionado um div com altura fixa para conter o gráfico e evitar que estique. -->
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 flex flex-col">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Despesas por Categoria</h3>
+        <div class="relative h-80">
+            <canvas id="expensesPieChart"></canvas>
+        </div>
+    </div>
+    <!-- CORREÇÃO: Adicionado um div com altura fixa para conter o gráfico e evitar que estique. -->
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 flex flex-col">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Fluxo de Caixa (Últimos 6 Meses)</h3>
+        <div class="relative h-80">
+            <canvas id="cashFlowLineChart"></canvas>
+        </div>
     </div>
 </section>
 
@@ -98,7 +116,18 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center">
-                        <a href="#" onclick="openEditModal('{{ tx.id }}', '{{ tx.description }}', '{{ tx.amount }}', '{{ tx.due_date.strftime('%Y-%m-%d') if tx.due_date else '' }}', '{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}', '{{ tx.type }}', '{{ tx.category }}', '{{ tx.status }}', '{{ tx.client_supplier or '' }}')" class="text-blue-600 hover:text-blue-900 mr-3">Editar</a>
+                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-3 edit-transaction-btn"
+                           data-id="{{ tx.id }}"
+                           data-description="{{ tx.description }}"
+                           data-amount="{{ tx.amount }}"
+                           data-due-date="{{ tx.due_date.strftime('%Y-%m-%d') if tx.due_date else '' }}"
+                           data-payment-date="{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}"
+                           data-type="{{ tx.type }}"
+                           data-category="{{ tx.category }}"
+                           data-status="{{ tx.status }}"
+                           data-client-supplier="{{ tx.client_supplier or '' }}">
+                           Editar
+                        </a>
                         {% if tx.status == 'pendente' %}
                         <a href="{{ url_for('update_status', tx_id=tx.id) }}" class="text-green-600 hover:text-green-900 mr-3">Pagar</a>
                         {% endif %}
@@ -292,4 +321,72 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+    // Script para renderizar os gráficos
+    document.addEventListener('DOMContentLoaded', function() {
+        // Dados para o Gráfico de Pizza
+        const pieChartData = {{ pie_chart_data|tojson|safe }};
+        const pieCtx = document.getElementById('expensesPieChart').getContext('2d');
+        if (pieChartData.data.length > 0) {
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: pieChartData.labels,
+                    datasets: [{
+                        label: 'Despesas por Categoria',
+                        data: pieChartData.data,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+                            '#FFCD56', '#C9CBCF', '#36A2EB', '#FF6384'
+                        ],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                }
+            });
+        } else {
+            pieCtx.font = "16px Inter";
+            pieCtx.textAlign = "center";
+            pieCtx.fillText("Sem dados de despesas para exibir.", pieCtx.canvas.width / 2, pieCtx.canvas.height / 2);
+        }
+
+        // Dados para o Gráfico de Linha
+        const lineChartData = {{ line_chart_data|tojson|safe }};
+        const lineCtx = document.getElementById('cashFlowLineChart').getContext('2d');
+        if (lineChartData.data.length > 0) {
+            new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: lineChartData.labels,
+                    datasets: [{
+                        label: 'Saldo Mensal (Receitas - Despesas)',
+                        data: lineChartData.data,
+                        borderColor: '#36A2EB',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } else {
+            lineCtx.font = "16px Inter";
+            lineCtx.textAlign = "center";
+            lineCtx.fillText("Sem dados de fluxo de caixa para exibir.", lineCtx.canvas.width / 2, lineCtx.canvas.height / 2);
+        }
+    });
+</script>
 {% endblock %}

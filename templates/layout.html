@@ -6,6 +6,8 @@
     <title>{% block title %}Livro Caixa{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Inclusão da biblioteca Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal { display: none; }
@@ -13,51 +15,18 @@
         .dropdown:hover .dropdown-menu { display: block; }
         
         @media print {
-            .noprint {
-                display: none !important;
-            }
-            body {
-                font-size: 10pt;
-                background-color: #ffffff !important;
-            }
-            main {
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            .container {
-                max-width: 100% !important;
-                width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            header h1 {
-                font-size: 18pt;
-            }
-            header p {
-                font-size: 12pt;
-            }
-            section, div {
-                box-shadow: none !important;
-                border: none !important;
-                border-radius: 0 !important;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            th, td {
-                border: 1px solid #ccc !important;
-                padding: 4px 8px;
-            }
-            thead {
-                display: table-header-group; /* Garante que o cabeçalho repita em cada página */
-            }
-            tbody tr {
-                page-break-inside: avoid; /* Evita que as linhas da tabela quebrem entre páginas */
-            }
-            tfoot {
-                display: table-footer-group;
-            }
+            .noprint { display: none !important; }
+            body { font-size: 10pt; background-color: #ffffff !important; }
+            main { padding: 0 !important; margin: 0 !important; }
+            .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            header h1 { font-size: 18pt; }
+            header p { font-size: 12pt; }
+            section, div { box-shadow: none !important; border: none !important; border-radius: 0 !important; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ccc !important; padding: 4px 8px; }
+            thead { display: table-header-group; }
+            tbody tr { page-break-inside: avoid; }
+            tfoot { display: table-footer-group; }
         }
     </style>
 </head>
@@ -134,18 +103,39 @@
             }
         });
 
-        function openEditModal(id, description, amount, dueDate, paymentDate, type, category, status, clientSupplier) {
-            document.getElementById('editTransactionForm').action = '/edit/' + id;
-            document.getElementById('edit_description').value = description;
-            document.getElementById('edit_amount').value = amount;
-            document.getElementById('edit_due_date').value = dueDate;
-            document.getElementById('edit_date').value = paymentDate;
-            document.getElementById('edit_type').value = type;
-            document.getElementById('edit_category').value = category;
-            document.getElementById('edit_client_supplier').value = clientSupplier || '';
-            document.getElementById('edit_is_paid').checked = (status === 'pago' || status === 'recebido');
-            openModal('editTransactionModal');
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.addEventListener('click', function(event) {
+                if (event.target.classList.contains('edit-transaction-btn')) {
+                    event.preventDefault();
+                    const button = event.target;
+                    
+                    const id = button.dataset.id;
+                    const description = button.dataset.description;
+                    const amount = button.dataset.amount;
+                    const dueDate = button.dataset.dueDate;
+                    const paymentDate = button.dataset.paymentDate;
+                    const type = button.dataset.type;
+                    const category = button.dataset.category;
+                    const status = button.dataset.status;
+                    const clientSupplier = button.dataset.clientSupplier;
+
+                    document.getElementById('editTransactionForm').action = '/edit/' + id;
+                    document.getElementById('edit_description').value = description;
+                    document.getElementById('edit_amount').value = amount;
+                    document.getElementById('edit_due_date').value = dueDate;
+                    document.getElementById('edit_date').value = paymentDate;
+                    document.getElementById('edit_type').value = type;
+                    document.getElementById('edit_category').value = category;
+                    document.getElementById('edit_client_supplier').value = clientSupplier || '';
+                    document.getElementById('edit_is_paid').checked = (status === 'pago' || status === 'recebido');
+                    
+                    openModal('editTransactionModal');
+                }
+            });
+        });
     </script>
+    
+    <!-- Bloco para scripts específicos da página (como os gráficos) -->
+    {% block page_scripts %}{% endblock %}
 </body>
 </html>

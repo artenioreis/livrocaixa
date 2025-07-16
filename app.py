@@ -7,12 +7,13 @@
 # 5. Abra seu navegador e acesse: http://127.0.0.1:5000
 
 # --- Importações das bibliotecas necessárias ---
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, timedelta
 import uuid  # Para gerar IDs únicos para cada item
 import copy  # Para criar cópias profundas dos objetos
 from functools import wraps # Para criar decorators de autenticação
 from werkzeug.security import generate_password_hash, check_password_hash # Para segurança de senhas
+from collections import defaultdict
 
 # --- Inicialização da Aplicação Flask ---
 app = Flask(__name__)
@@ -33,8 +34,12 @@ for category in admin_categories:
     category['id'] = str(uuid.uuid4())
 
 admin_transactions = [
-    {'id': str(uuid.uuid4()), 'description': 'Receita Inicial Admin', 'amount': 1000.00, 'type': 'receita', 'category': 'Salário', 'date': '2025-07-06', 'due_date': '2025-07-06', 'status': 'recebido'},
-    {'id': str(uuid.uuid4()), 'description': 'Despesa Inicial Admin', 'amount': 250.00, 'type': 'despesa', 'category': 'Moradia', 'date': '2025-07-10', 'due_date': '2025-07-10', 'status': 'pago'},
+    {'id': str(uuid.uuid4()), 'description': 'Receita Inicial Admin', 'amount': 5000.00, 'type': 'receita', 'category': 'Salário', 'date': (datetime.now() - timedelta(days=65)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=65)).strftime('%Y-%m-%d'), 'status': 'recebido', 'client_supplier': 'Empresa A'},
+    {'id': str(uuid.uuid4()), 'description': 'Aluguel (Mês Passado)', 'amount': 1500.00, 'type': 'despesa', 'category': 'Moradia', 'date': (datetime.now() - timedelta(days=35)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=35)).strftime('%Y-%m-%d'), 'status': 'pago', 'client_supplier': 'Imobiliária Z'},
+    {'id': str(uuid.uuid4()), 'description': 'Supermercado', 'amount': 450.75, 'type': 'despesa', 'category': 'Alimentação', 'date': (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d'), 'status': 'pago', 'client_supplier': 'Supermercado Bom Preço'},
+    {'id': str(uuid.uuid4()), 'description': 'Salário', 'amount': 5000.00, 'type': 'receita', 'category': 'Salário', 'date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'), 'status': 'recebido', 'client_supplier': 'Empresa A'},
+    {'id': str(uuid.uuid4()), 'description': 'Fatura Cartão', 'amount': 850.00, 'type': 'despesa', 'category': 'Outros', 'date': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'), 'status': 'pago', 'client_supplier': 'Banco X'},
+    {'id': str(uuid.uuid4()), 'description': 'Projeto Freelance', 'amount': 1200.00, 'type': 'receita', 'category': 'Outros', 'date': '', 'due_date': (datetime.now() + timedelta(days=10)).strftime('%Y-%m-%d'), 'status': 'pendente', 'client_supplier': 'Cliente B'},
 ]
 
 # Estrutura principal de dados
@@ -47,7 +52,9 @@ data = {
         "transactions": admin_transactions,
         "categories": admin_categories,
         "accounts": [{'id': str(uuid.uuid4()), 'name': 'Conta Padrão Admin'}],
-        "credit_cards": [], "payment_methods": [], "clients": [], "suppliers": []
+        "credit_cards": [], "payment_methods": [], 
+        "clients": [{'id': str(uuid.uuid4()), 'name': 'Empresa A'}, {'id': str(uuid.uuid4()), 'name': 'Cliente B'}], 
+        "suppliers": [{'id': str(uuid.uuid4()), 'name': 'Imobiliária Z'}, {'id': str(uuid.uuid4()), 'name': 'Supermercado Bom Preço'}, {'id': str(uuid.uuid4()), 'name': 'Banco X'}]
     }
 }
 
@@ -208,6 +215,50 @@ def admin_reset_password(username):
 @login_required
 def index():
     user_data = data.get(session['username'], {})
+    
+    # --- Preparação de Dados para os Gráficos ---
+    
+    # 1. Gráfico de Pizza: Despesas por Categoria
+    expenses_by_category = defaultdict(float)
+    paid_transactions = [t for t in user_data.get('transactions', []) if t['status'] == 'pago']
+    for tx in paid_transactions:
+        expenses_by_category[tx['category']] += tx['amount']
+    
+    pie_chart_data = {
+        "labels": list(expenses_by_category.keys()),
+        "data": list(expenses_by_category.values())
+    }
+
+    # 2. Gráfico de Linha: Fluxo de Caixa (Últimos 6 meses)
+    monthly_flow = {}
+    today = datetime.today()
+    for i in range(6):
+        month = today - timedelta(days=30 * i)
+        month_key = month.strftime("%Y-%m")
+        monthly_flow[month_key] = {"income": 0, "expense": 0}
+
+    all_paid_transactions = [t for t in user_data.get('transactions', []) if t['status'] in ['pago', 'recebido'] and t.get('date')]
+    for tx in all_paid_transactions:
+        tx_date = parse_date(tx['date'])
+        if tx_date:
+            month_key = tx_date.strftime("%Y-%m")
+            if month_key in monthly_flow:
+                if tx['type'] == 'receita':
+                    monthly_flow[month_key]['income'] += tx['amount']
+                else:
+                    monthly_flow[month_key]['expense'] += tx['amount']
+    
+    line_chart_labels = sorted(monthly_flow.keys())
+    line_chart_data = [monthly_flow[key]['income'] - monthly_flow[key]['expense'] for key in line_chart_labels]
+    # Formata as labels para "Mês/Ano"
+    line_chart_labels_formatted = [datetime.strptime(key, "%Y-%m").strftime("%b/%y") for key in line_chart_labels]
+
+    line_chart_data_final = {
+        "labels": line_chart_labels_formatted,
+        "data": line_chart_data
+    }
+
+    # --- Lógica da Página Principal ---
     local_transactions = copy.deepcopy(user_data.get('transactions', []))
     
     filter_date_str = request.args.get('filter_date')
@@ -243,11 +294,10 @@ def index():
         total_expense=total_expense,
         today_date=datetime.now().strftime('%Y-%m-%d'),
         categories=sorted(user_data.get('categories', []), key=lambda c: c['name']),
-        accounts=user_data.get('accounts', []),
-        credit_cards=user_data.get('credit_cards', []),
-        payment_methods=user_data.get('payment_methods', []),
-        clients=user_data.get('clients', []),
-        suppliers=user_data.get('suppliers', [])
+        clients=sorted(user_data.get('clients', []), key=lambda c: c['name']),
+        suppliers=sorted(user_data.get('suppliers', []), key=lambda s: s['name']),
+        pie_chart_data=pie_chart_data,
+        line_chart_data=line_chart_data_final
     )
 
 @app.route('/reports', methods=['GET'])
@@ -265,7 +315,6 @@ def reports():
         end_date_inclusive = end_date.replace(hour=23, minute=59, second=59)
         for t in user_data.get('transactions', []):
             payment_date = parse_date(t.get('date'))
-            # CORREÇÃO: Verifica se a data de pagamento existe antes de comparar
             if payment_date and start_date <= payment_date <= end_date_inclusive:
                 report_transactions.append(t)
 
@@ -304,7 +353,6 @@ def detailed_report():
             payment_date = parse_date(t.get('date'))
             due_date = parse_date(t.get('due_date'))
             
-            # CORREÇÃO: Verifica se as datas existem antes de comparar
             payment_in_range = payment_date and start_date <= payment_date <= end_date_inclusive
             due_in_range = due_date and start_date <= due_date <= end_date_inclusive
 
@@ -352,7 +400,8 @@ def add_transaction():
         'id': str(uuid.uuid4()), 'description': request.form['description'],
         'amount': float(request.form['amount']), 'type': transaction_type,
         'category': request.form['category'], 'date': payment_date,
-        'due_date': request.form['due_date'], 'status': status
+        'due_date': request.form['due_date'], 'status': status,
+        'client_supplier': request.form.get('client_supplier')
     }
     user_data.setdefault('transactions', []).append(new_tx)
     flash("Lançamento adicionado com sucesso!", "success")
@@ -377,6 +426,7 @@ def edit_transaction(tx_id):
     transaction_to_edit['due_date'] = request.form['due_date']
     transaction_to_edit['category'] = request.form['category']
     transaction_to_edit['type'] = request.form['type']
+    transaction_to_edit['client_supplier'] = request.form.get('client_supplier')
     
     is_paid = 'is_paid' in request.form
     payment_date = request.form.get('date')
@@ -460,15 +510,5 @@ def add_supplier():
     return redirect(url_for('index'))
 
 # --- Ponto de Entrada da Aplicação ---
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-
-
-
-
-
-#if __name__ == '__main__':
-   # app.run(debug=True)
-
-
-
+if __name__ == '__main__':
+    app.run(debug=True)
