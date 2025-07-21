@@ -1,65 +1,60 @@
 # app.py
 # Para executar este aplicativo:
 # 1. Crie uma pasta chamada 'templates' no mesmo diretório deste arquivo.
-# 2. Salve todos os arquivos .html dentro da pasta 'templates'.
-# 3. Instale o Flask: pip install Flask
-# 4. No terminal, execute: python app.py
-# 5. Abra seu navegador e acesse: http://127.0.0.1:5000
+# 2. Salve todos os arquivos .html e o arquivo schema.sql dentro da pasta 'templates'.
+# 3. APAGUE o ficheiro 'livro_caixa.db' antigo, se ele existir.
+# 4. Instale o Flask: pip install Flask
+# 5. No terminal, execute: python app.py (isto irá criar um novo ficheiro .db com a estrutura correta)
+# 6. Abra seu navegador e acesse: http://127.0.0.1:5000
 
-# --- Importações das bibliotecas necessárias ---
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+import sqlite3
+import uuid
 from datetime import datetime, timedelta
-import uuid  # Para gerar IDs únicos para cada item
-import copy  # Para criar cópias profundas dos objetos
-from functools import wraps # Para criar decorators de autenticação
-from werkzeug.security import generate_password_hash, check_password_hash # Para segurança de senhas
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from collections import defaultdict
 
-# --- Inicialização da Aplicação Flask ---
+# --- Configuração da Aplicação e Banco de Dados ---
+DATABASE = 'livro_caixa.db'
 app = Flask(__name__)
-app.secret_key = 'sua-chave-secreta-super-segura-aqui' 
+app.secret_key = 'sua-chave-secreta-super-segura-aqui'
 
-# --- Armazenamento de Dados em Memória ---
+def get_db():
+    """Abre uma nova conexão com o banco de dados se não houver uma."""
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
 
-# Lista de categorias padrão para novos usuários
-DEFAULT_CATEGORIES = [
-    {'name': 'Salário'}, {'name': 'Moradia'}, {'name': 'Alimentação'},
-    {'name': 'Transporte'}, {'name': 'Lazer'}, {'name': 'Saúde'},
-    {'name': 'Educação'}, {'name': 'Outros'}
-]
+@app.teardown_appcontext
+def close_connection(exception):
+    """Fecha a conexão com o banco de dados ao final da requisição."""
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
-# Dados iniciais para o usuário administrador
-admin_categories = copy.deepcopy(DEFAULT_CATEGORIES)
-for category in admin_categories:
-    category['id'] = str(uuid.uuid4())
-
-admin_transactions = [
-    {'id': str(uuid.uuid4()), 'description': 'Receita Inicial Admin', 'amount': 5000.00, 'type': 'receita', 'category': 'Salário', 'date': (datetime.now() - timedelta(days=65)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=65)).strftime('%Y-%m-%d'), 'status': 'recebido', 'client_supplier': 'Empresa A'},
-    {'id': str(uuid.uuid4()), 'description': 'Aluguel (Mês Passado)', 'amount': 1500.00, 'type': 'despesa', 'category': 'Moradia', 'date': (datetime.now() - timedelta(days=35)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=35)).strftime('%Y-%m-%d'), 'status': 'pago', 'client_supplier': 'Imobiliária Z'},
-    {'id': str(uuid.uuid4()), 'description': 'Supermercado', 'amount': 450.75, 'type': 'despesa', 'category': 'Alimentação', 'date': (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d'), 'status': 'pago', 'client_supplier': 'Supermercado Bom Preço'},
-    {'id': str(uuid.uuid4()), 'description': 'Salário', 'amount': 5000.00, 'type': 'receita', 'category': 'Salário', 'date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'), 'status': 'recebido', 'client_supplier': 'Empresa A'},
-    {'id': str(uuid.uuid4()), 'description': 'Fatura Cartão', 'amount': 850.00, 'type': 'despesa', 'category': 'Outros', 'date': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'), 'due_date': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'), 'status': 'pago', 'client_supplier': 'Banco X'},
-    {'id': str(uuid.uuid4()), 'description': 'Projeto Freelance', 'amount': 1200.00, 'type': 'receita', 'category': 'Outros', 'date': '', 'due_date': (datetime.now() + timedelta(days=10)).strftime('%Y-%m-%d'), 'status': 'pendente', 'client_supplier': 'Cliente B'},
-]
-
-# Estrutura principal de dados
-data = {
-    "admin": {
-        "password": generate_password_hash("admin"),
-        "email": "artenio.reis@gmail.com",
-        "role": "admin",
-        "reset_token": None,
-        "transactions": admin_transactions,
-        "categories": admin_categories,
-        "accounts": [{'id': str(uuid.uuid4()), 'name': 'Conta Padrão Admin'}],
-        "credit_cards": [], "payment_methods": [], 
-        "clients": [{'id': str(uuid.uuid4()), 'name': 'Empresa A'}, {'id': str(uuid.uuid4()), 'name': 'Cliente B'}], 
-        "suppliers": [{'id': str(uuid.uuid4()), 'name': 'Imobiliária Z'}, {'id': str(uuid.uuid4()), 'name': 'Supermercado Bom Preço'}, {'id': str(uuid.uuid4()), 'name': 'Banco X'}]
-    }
-}
+def init_db():
+    """Inicializa o banco de dados com o schema definido."""
+    with app.app_context():
+        db = get_db()
+        with app.open_resource('templates/schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+        
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", ('admin',))
+        if cursor.fetchone() is None:
+            admin_password = generate_password_hash('admin')
+            cursor.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+                ('admin', 'artenio.reis@gmail.com', admin_password, 'admin')
+            )
+            db.commit()
+            print("Banco de dados inicializado e usuário 'admin' criado.")
 
 # --- Funções Auxiliares e Decorators ---
-
 def parse_date(date_val):
     if isinstance(date_val, datetime): return date_val
     if not date_val or not isinstance(date_val, str): return None
@@ -69,10 +64,10 @@ def parse_date(date_val):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'username' not in session:
+        if 'user_id' not in session:
             flash("Por favor, faça login para acessar esta página.", "warning")
             return redirect(url_for('login'))
-        if session['username'] not in data:
+        if session['username'] not in [row['username'] for row in get_db().execute('SELECT username FROM users').fetchall()]:
             flash("Sua sessão é inválida. Por favor, faça login novamente.", "danger")
             session.clear()
             return redirect(url_for('login'))
@@ -82,29 +77,28 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'username' not in session:
-            flash("Por favor, faça login para acessar esta página.", "warning")
+        if 'user_id' not in session:
             return redirect(url_for('login'))
-        username = session['username']
-        user_data = data.get(username, {})
-        if user_data.get('role') != 'admin':
+        if session.get('role') != 'admin':
             flash("Você não tem permissão para acessar esta página.", "danger")
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
 
 # --- Rotas de Autenticação e Usuários ---
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        db = get_db()
         username = request.form['username']
         password = request.form['password']
-        user = data.get(username)
-        if user and check_password_hash(user['password'], password):
-            session['username'] = username
+        user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+
+        if user and check_password_hash(user['password_hash'], password):
+            session.clear()
+            session['user_id'] = user['id']
+            session['username'] = user['username']
             session['role'] = user['role']
-            flash(f"Login bem-sucedido! Bem-vindo, {username}.", "success")
             return redirect(url_for('index'))
         else:
             flash("Usuário ou senha inválidos.", "danger")
@@ -119,15 +113,14 @@ def logout():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
+        db = get_db()
         email = request.form['email']
-        user_to_reset = None
-        for username, user_data in data.items():
-            if user_data.get('email') == email:
-                user_to_reset = user_data
-                break
-        if user_to_reset:
+        user = db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        
+        if user:
             token = str(uuid.uuid4())
-            user_to_reset['reset_token'] = token
+            db.execute('UPDATE users SET reset_token = ? WHERE id = ?', (token, user['id']))
+            db.commit()
             return redirect(url_for('reset_password', token=token))
         else:
             flash("Nenhum usuário encontrado com este e-mail.", "danger")
@@ -136,73 +129,73 @@ def forgot_password():
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    user_to_reset = None
-    for username, user_data in data.items():
-        if user_data.get('reset_token') == token:
-            user_to_reset = user_data
-            break
-    if not user_to_reset:
+    db = get_db()
+    user = db.execute('SELECT * FROM users WHERE reset_token = ?', (token,)).fetchone()
+    
+    if not user:
         flash("Token de redefinição de senha inválido ou expirado.", "danger")
         return redirect(url_for('login'))
+
     if request.method == 'POST':
         new_password = request.form['password']
         confirm_password = request.form['confirm_password']
+
         if new_password != confirm_password:
             flash("As senhas não coincidem.", "danger")
             return render_template('reset_password.html', token=token)
-        user_to_reset['password'] = generate_password_hash(new_password)
-        user_to_reset['reset_token'] = None
+        
+        password_hash = generate_password_hash(new_password)
+        db.execute('UPDATE users SET password_hash = ?, reset_token = NULL WHERE id = ?', (password_hash, user['id']))
+        db.commit()
         flash("Sua senha foi redefinida com sucesso! Você já pode fazer login.", "success")
         return redirect(url_for('login'))
+
     return render_template('reset_password.html', token=token)
 
 @app.route('/users', methods=['GET', 'POST'])
 @admin_required
 def manage_users():
+    db = get_db()
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
         role = request.form['role']
-        if username in data:
-            flash("Este nome de usuário já existe.", "danger")
-        elif any(u.get('email') == email for u in data.values()):
-             flash("Este e-mail já está em uso por outro usuário.", "danger")
+        
+        if db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone() is not None:
+            flash('Este nome de usuário já existe.', 'danger')
+        elif db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone() is not None:
+            flash('Este e-mail já está em uso.', 'danger')
         else:
-            new_user_categories = copy.deepcopy(DEFAULT_CATEGORIES)
-            for category in new_user_categories:
-                category['id'] = str(uuid.uuid4())
-            data[username] = {
-                "password": generate_password_hash(password), "email": email,
-                "role": role, "reset_token": None, "transactions": [], 
-                "categories": new_user_categories, "accounts": [], "credit_cards": [], 
-                "payment_methods": [], "clients": [], "suppliers": []
-            }
+            db.execute(
+                'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
+                (username, email, generate_password_hash(password), role)
+            )
+            db.commit()
             flash(f"Usuário '{username}' criado com sucesso!", "success")
         return redirect(url_for('manage_users'))
-    
-    users_list = {u: d for u, d in data.items() if u != 'admin'}
-    return render_template('users.html', users=users_list)
 
-@app.route('/users/delete/<username>')
+    users = db.execute('SELECT id, username, email, role FROM users WHERE username != "admin"').fetchall()
+    return render_template('users.html', users=users)
+
+@app.route('/users/delete/<int:user_id>')
 @admin_required
-def delete_user(username):
-    if username == 'admin':
-        flash("O usuário administrador não pode ser excluído.", "danger")
-    elif username in data:
-        del data[username]
-        flash(f"Usuário '{username}' excluído com sucesso.", "success")
-    else:
-        flash("Usuário não encontrado.", "danger")
+def delete_user(user_id):
+    db = get_db()
+    db.execute('DELETE FROM users WHERE id = ?', (user_id,))
+    db.commit()
+    flash('Usuário excluído com sucesso.', 'success')
     return redirect(url_for('manage_users'))
 
 @app.route('/users/reset/<username>')
 @admin_required
 def admin_reset_password(username):
-    user_to_reset = data.get(username)
+    db = get_db()
+    user_to_reset = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
     if user_to_reset:
         token = str(uuid.uuid4())
-        user_to_reset['reset_token'] = token
+        db.execute('UPDATE users SET reset_token = ? WHERE id = ?', (token, user_to_reset['id']))
+        db.commit()
         reset_url = url_for('reset_password', token=token, _external=True)
         flash(f'Link de redefinição para {username}: {reset_url}', "info")
     else:
@@ -210,26 +203,47 @@ def admin_reset_password(username):
     return redirect(url_for('manage_users'))
 
 # --- Rotas da Aplicação Financeira ---
-
 @app.route('/')
 @login_required
 def index():
-    user_data = data.get(session['username'], {})
+    db = get_db()
+    user_id = session['user_id']
     
-    # --- Preparação de Dados para os Gráficos ---
+    transactions_from_db = db.execute(
+        'SELECT * FROM transactions WHERE user_id = ? ORDER BY due_date DESC', (user_id,)
+    ).fetchall()
+
+    transactions = []
+    for tx_row in transactions_from_db:
+        tx_dict = dict(tx_row)
+        tx_dict['date'] = parse_date(tx_dict['date'])
+        tx_dict['due_date'] = parse_date(tx_dict['due_date'])
+        transactions.append(tx_dict)
+
+    total_income = db.execute(
+        "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'receita' AND status IN ('pago', 'recebido')", (user_id,)
+    ).fetchone()[0] or 0.0
+
+    total_expense = db.execute(
+        "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'despesa' AND status = 'pago'", (user_id,)
+    ).fetchone()[0] or 0.0
     
-    # 1. Gráfico de Pizza: Despesas por Categoria
-    expenses_by_category = defaultdict(float)
-    paid_transactions = [t for t in user_data.get('transactions', []) if t['status'] == 'pago']
-    for tx in paid_transactions:
-        expenses_by_category[tx['category']] += tx['amount']
+    balance = total_income - total_expense
+    
+    categories = db.execute('SELECT name FROM categories WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    clients = db.execute('SELECT name FROM clients WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    suppliers = db.execute('SELECT name FROM suppliers WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+
+    expenses_by_category = db.execute(
+        "SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'despesa' AND status = 'pago' GROUP BY category",
+        (user_id,)
+    ).fetchall()
     
     pie_chart_data = {
-        "labels": list(expenses_by_category.keys()),
-        "data": list(expenses_by_category.values())
+        "labels": [row['category'] for row in expenses_by_category],
+        "data": [row['total'] for row in expenses_by_category]
     }
 
-    # 2. Gráfico de Linha: Fluxo de Caixa (Últimos 6 meses)
     monthly_flow = {}
     today = datetime.today()
     for i in range(6):
@@ -237,20 +251,22 @@ def index():
         month_key = month.strftime("%Y-%m")
         monthly_flow[month_key] = {"income": 0, "expense": 0}
 
-    all_paid_transactions = [t for t in user_data.get('transactions', []) if t['status'] in ['pago', 'recebido'] and t.get('date')]
+    all_paid_transactions = db.execute(
+        "SELECT amount, type, date FROM transactions WHERE user_id = ? AND status IN ('pago', 'recebido') AND date IS NOT NULL",
+        (user_id,)
+    ).fetchall()
+
     for tx in all_paid_transactions:
-        tx_date = parse_date(tx['date'])
-        if tx_date:
-            month_key = tx_date.strftime("%Y-%m")
-            if month_key in monthly_flow:
-                if tx['type'] == 'receita':
-                    monthly_flow[month_key]['income'] += tx['amount']
-                else:
-                    monthly_flow[month_key]['expense'] += tx['amount']
+        tx_date = datetime.strptime(tx['date'], '%Y-%m-%d')
+        month_key = tx_date.strftime("%Y-%m")
+        if month_key in monthly_flow:
+            if tx['type'] == 'receita':
+                monthly_flow[month_key]['income'] += tx['amount']
+            else:
+                monthly_flow[month_key]['expense'] += tx['amount']
     
     line_chart_labels = sorted(monthly_flow.keys())
     line_chart_data = [monthly_flow[key]['income'] - monthly_flow[key]['expense'] for key in line_chart_labels]
-    # Formata as labels para "Mês/Ano"
     line_chart_labels_formatted = [datetime.strptime(key, "%Y-%m").strftime("%b/%y") for key in line_chart_labels]
 
     line_chart_data_final = {
@@ -258,52 +274,50 @@ def index():
         "data": line_chart_data
     }
 
-    # --- Lógica da Página Principal ---
-    local_transactions = copy.deepcopy(user_data.get('transactions', []))
-    
-    filter_date_str = request.args.get('filter_date')
-    filter_type = request.args.get('filter_type')
-    filter_status = request.args.get('filter_status')
-    filtered_transactions = local_transactions
-    if filter_date_str:
-        filter_date = parse_date(filter_date_str)
-        if filter_date:
-            filtered_transactions = [t for t in filtered_transactions if parse_date(t.get('date')) == filter_date or parse_date(t.get('due_date')) == filter_date]
-    if filter_type:
-        filtered_transactions = [t for t in filtered_transactions if t['type'] == filter_type]
-    if filter_status:
-        if filter_status == 'pago':
-            filtered_transactions = [t for t in filtered_transactions if t['status'] in ['pago', 'recebido']]
-        else:
-            filtered_transactions = [t for t in filtered_transactions if t['status'] == filter_status]
-
-    sorted_transactions = sorted(filtered_transactions, key=lambda t: parse_date(t.get('due_date')) or datetime.min, reverse=True)
-    for t in sorted_transactions:
-        t['date'] = parse_date(t.get('date'))
-        t['due_date'] = parse_date(t.get('due_date'))
-
-    total_income = sum(t['amount'] for t in user_data.get('transactions', []) if t['type'] == 'receita' and t['status'] in ['recebido', 'pago'])
-    total_expense = sum(t['amount'] for t in user_data.get('transactions', []) if t['type'] == 'despesa' and t['status'] == 'pago')
-    balance = total_income - total_expense
-
     return render_template(
         'index.html', 
-        transactions=sorted_transactions,
+        transactions=transactions,
         balance=balance,
         total_income=total_income,
         total_expense=total_expense,
         today_date=datetime.now().strftime('%Y-%m-%d'),
-        categories=sorted(user_data.get('categories', []), key=lambda c: c['name']),
-        clients=sorted(user_data.get('clients', []), key=lambda c: c['name']),
-        suppliers=sorted(user_data.get('suppliers', []), key=lambda s: s['name']),
+        categories=categories,
+        clients=clients,
+        suppliers=suppliers,
         pie_chart_data=pie_chart_data,
         line_chart_data=line_chart_data_final
     )
 
+@app.route('/add', methods=['POST'])
+@login_required
+def add_transaction():
+    db = get_db()
+    user_id = session['user_id']
+    
+    is_paid = 'is_paid' in request.form
+    payment_date = request.form.get('date')
+    transaction_type = request.form['type']
+    
+    if is_paid:
+        status = 'recebido' if transaction_type == 'receita' else 'pago'
+        if not payment_date: payment_date = datetime.now().strftime('%Y-%m-%d')
+    else:
+        status = 'pendente'
+        payment_date = None
+
+    db.execute(
+        'INSERT INTO transactions (user_id, description, amount, type, category, date, due_date, status, client_supplier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (user_id, request.form['description'], float(request.form['amount']), transaction_type, request.form['category'], payment_date, request.form['due_date'], status, request.form.get('client_supplier'))
+    )
+    db.commit()
+    flash("Lançamento adicionado com sucesso!", "success")
+    return redirect(url_for('index'))
+
 @app.route('/reports', methods=['GET'])
 @login_required
 def reports():
-    user_data = data.get(session['username'], {})
+    db = get_db()
+    user_id = session['user_id']
     today = datetime.now()
     start_date_str = request.args.get('start_date', today.replace(day=1).strftime('%Y-%m-%d'))
     end_date_str = request.args.get('end_date', today.strftime('%Y-%m-%d'))
@@ -313,19 +327,20 @@ def reports():
     report_transactions = []
     if start_date and end_date:
         end_date_inclusive = end_date.replace(hour=23, minute=59, second=59)
-        for t in user_data.get('transactions', []):
-            payment_date = parse_date(t.get('date'))
-            if payment_date and start_date <= payment_date <= end_date_inclusive:
-                report_transactions.append(t)
+        transactions_from_db = db.execute(
+            "SELECT * FROM transactions WHERE user_id = ? AND date >= ? AND date <= ?",
+            (user_id, start_date_str, end_date_str)
+        ).fetchall()
+        for tx_row in transactions_from_db:
+            tx_dict = dict(tx_row)
+            tx_dict['date'] = parse_date(tx_dict['date'])
+            report_transactions.append(tx_dict)
 
     income_transactions = [t for t in report_transactions if t['type'] == 'receita']
     expense_transactions = [t for t in report_transactions if t['type'] == 'despesa']
     total_income = sum(t['amount'] for t in income_transactions)
     total_expense = sum(t['amount'] for t in expense_transactions)
     
-    for t in income_transactions: t['date'] = parse_date(t.get('date'))
-    for t in expense_transactions: t['date'] = parse_date(t.get('date'))
-
     return render_template(
         'reports.html',
         start_date=start_date_str,
@@ -339,7 +354,8 @@ def reports():
 @app.route('/reports/detailed', methods=['GET'])
 @login_required
 def detailed_report():
-    user_data = data.get(session['username'], {})
+    db = get_db()
+    user_id = session['user_id']
     today = datetime.now()
     start_date_str = request.args.get('start_date', today.replace(day=1).strftime('%Y-%m-%d'))
     end_date_str = request.args.get('end_date', today.strftime('%Y-%m-%d'))
@@ -349,166 +365,172 @@ def detailed_report():
     report_transactions = []
     if start_date and end_date:
         end_date_inclusive = end_date.replace(hour=23, minute=59, second=59)
-        for t in user_data.get('transactions', []):
-            payment_date = parse_date(t.get('date'))
-            due_date = parse_date(t.get('due_date'))
-            
-            payment_in_range = payment_date and start_date <= payment_date <= end_date_inclusive
-            due_in_range = due_date and start_date <= due_date <= end_date_inclusive
+        transactions_from_db = db.execute(
+            "SELECT * FROM transactions WHERE user_id = ? AND ( (date >= ? AND date <= ?) OR (due_date >= ? AND due_date <= ?) ) ORDER BY due_date",
+            (user_id, start_date_str, end_date_str, start_date_str, end_date_str)
+        ).fetchall()
+        
+        for tx_row in transactions_from_db:
+            tx_dict = dict(tx_row)
+            tx_dict['date'] = parse_date(tx_dict['date'])
+            tx_dict['due_date'] = parse_date(tx_dict['due_date'])
+            report_transactions.append(tx_dict)
 
-            if payment_in_range or due_in_range:
-                report_transactions.append(t)
-
-    sorted_transactions = sorted(report_transactions, key=lambda t: parse_date(t.get('due_date')) or datetime.min)
-    
-    total_income = sum(t['amount'] for t in sorted_transactions if t['type'] == 'receita' and t['status'] in ['pago', 'recebido'])
-    total_expense = sum(t['amount'] for t in sorted_transactions if t['type'] == 'despesa' and t['status'] in ['pago', 'recebido'])
+    total_income = sum(t['amount'] for t in report_transactions if t['type'] == 'receita' and t['status'] in ['pago', 'recebido'])
+    total_expense = sum(t['amount'] for t in report_transactions if t['type'] == 'despesa' and t['status'] in ['pago', 'recebido'])
     balance = total_income - total_expense
-
-    for t in sorted_transactions:
-        t['date'] = parse_date(t.get('date'))
-        t['due_date'] = parse_date(t.get('due_date'))
 
     return render_template(
         'detailed_report.html',
         start_date=start_date_str,
         end_date=end_date_str,
-        transactions=sorted_transactions,
+        transactions=report_transactions,
         total_income=total_income,
         total_expense=total_expense,
         balance=balance
     )
 
-# --- Rotas para Adicionar, Atualizar e Deletar Dados ---
-
-@app.route('/add', methods=['POST'])
-@login_required
-def add_transaction():
-    user_data = data.get(session['username'], {})
-    is_paid = 'is_paid' in request.form
-    payment_date = request.form.get('date')
-    transaction_type = request.form['type']
-    
-    if is_paid:
-        status = 'recebido' if transaction_type == 'receita' else 'pago'
-        if not payment_date: payment_date = datetime.now().strftime('%Y-%m-%d')
-    else:
-        status = 'pendente'
-        payment_date = ''
-
-    new_tx = {
-        'id': str(uuid.uuid4()), 'description': request.form['description'],
-        'amount': float(request.form['amount']), 'type': transaction_type,
-        'category': request.form['category'], 'date': payment_date,
-        'due_date': request.form['due_date'], 'status': status,
-        'client_supplier': request.form.get('client_supplier')
-    }
-    user_data.setdefault('transactions', []).append(new_tx)
-    flash("Lançamento adicionado com sucesso!", "success")
-    return redirect(url_for('index'))
-
-@app.route('/edit/<tx_id>', methods=['POST'])
+@app.route('/edit/<int:tx_id>', methods=['POST'])
 @login_required
 def edit_transaction(tx_id):
-    user_data = data.get(session['username'], {})
-    transaction_to_edit = None
-    for tx in user_data.get('transactions', []):
-        if tx['id'] == tx_id:
-            transaction_to_edit = tx
-            break
-
-    if not transaction_to_edit:
-        flash("Lançamento não encontrado.", "danger")
+    db = get_db()
+    user_id = session['user_id']
+    
+    transaction = db.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (tx_id, user_id)).fetchone()
+    if transaction is None:
+        flash("Lançamento não encontrado ou não pertence a você.", "danger")
         return redirect(url_for('index'))
 
-    transaction_to_edit['description'] = request.form['description']
-    transaction_to_edit['amount'] = float(request.form['amount'])
-    transaction_to_edit['due_date'] = request.form['due_date']
-    transaction_to_edit['category'] = request.form['category']
-    transaction_to_edit['type'] = request.form['type']
-    transaction_to_edit['client_supplier'] = request.form.get('client_supplier')
-    
+    description = request.form['description']
+    amount = float(request.form['amount'])
+    due_date = request.form['due_date']
+    category = request.form['category']
+    transaction_type = request.form['type']
+    client_supplier = request.form.get('client_supplier')
     is_paid = 'is_paid' in request.form
     payment_date = request.form.get('date')
 
     if is_paid:
-        transaction_to_edit['status'] = 'recebido' if request.form['type'] == 'receita' else 'pago'
-        transaction_to_edit['date'] = payment_date if payment_date else datetime.now().strftime('%Y-%m-%d')
+        status = 'recebido' if transaction_type == 'receita' else 'pago'
+        if not payment_date:
+            payment_date = datetime.now().strftime('%Y-%m-%d')
     else:
-        transaction_to_edit['status'] = 'pendente'
-        transaction_to_edit['date'] = ''
+        status = 'pendente'
+        payment_date = None
 
+    db.execute(
+        'UPDATE transactions SET description = ?, amount = ?, type = ?, category = ?, date = ?, due_date = ?, status = ?, client_supplier = ? WHERE id = ?',
+        (description, amount, transaction_type, category, payment_date, due_date, status, client_supplier, tx_id)
+    )
+    db.commit()
     flash("Lançamento atualizado com sucesso!", "success")
     return redirect(url_for('index'))
 
-@app.route('/update_status/<tx_id>')
+@app.route('/update_status/<int:tx_id>')
 @login_required
 def update_status(tx_id):
-    user_data = data.get(session['username'], {})
-    for tx in user_data.get('transactions', []):
-        if tx['id'] == tx_id:
-            tx['status'] = 'recebido' if tx['type'] == 'receita' else 'pago'
-            tx['date'] = datetime.now().strftime('%Y-%m-%d')
-            break
+    db = get_db()
+    user_id = session['user_id']
+    
+    transaction = db.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (tx_id, user_id)).fetchone()
+    if transaction is None:
+        flash("Lançamento não encontrado ou não pertence a você.", "danger")
+        return redirect(url_for('index'))
+
+    status = 'recebido' if transaction['type'] == 'receita' else 'pago'
+    payment_date = datetime.now().strftime('%Y-%m-%d')
+    
+    db.execute(
+        'UPDATE transactions SET status = ?, date = ? WHERE id = ?',
+        (status, payment_date, tx_id)
+    )
+    db.commit()
+    flash("Status do lançamento atualizado para pago.", "success")
     return redirect(url_for('index'))
 
-@app.route('/delete/<tx_id>')
+@app.route('/delete/<int:tx_id>')
 @login_required
 def delete_transaction(tx_id):
-    user_data = data.get(session['username'], {})
-    user_data['transactions'] = [t for t in user_data.get('transactions', []) if t['id'] != tx_id]
-    flash("Lançamento excluído com sucesso.", "info")
+    db = get_db()
+    user_id = session['user_id']
+    
+    transaction = db.execute('SELECT id FROM transactions WHERE id = ? AND user_id = ?', (tx_id, user_id)).fetchone()
+    if transaction:
+        db.execute('DELETE FROM transactions WHERE id = ?', (tx_id,))
+        db.commit()
+        flash("Lançamento excluído com sucesso.", "info")
+    else:
+        flash("Lançamento não encontrado ou não pertence a você.", "danger")
+        
     return redirect(url_for('index'))
 
 # --- Rotas de Cadastro ---
 @app.route('/add_category', methods=['POST'])
 @login_required
 def add_category():
-    user_data = data.get(session['username'], {})
-    user_data.setdefault('categories', []).append({'id': str(uuid.uuid4()), 'name': request.form['name']})
+    db = get_db()
+    user_id = session['user_id']
+    name = request.form['name']
+    db.execute('INSERT INTO categories (user_id, name) VALUES (?, ?)', (user_id, name))
+    db.commit()
     flash("Categoria adicionada com sucesso!", "success")
     return redirect(url_for('index'))
 
 @app.route('/add_account', methods=['POST'])
 @login_required
 def add_account():
-    user_data = data.get(session['username'], {})
-    user_data.setdefault('accounts', []).append({'id': str(uuid.uuid4()), 'name': request.form['name']})
+    db = get_db()
+    user_id = session['user_id']
+    name = request.form['name']
+    db.execute('INSERT INTO accounts (user_id, name) VALUES (?, ?)', (user_id, name))
+    db.commit()
     flash("Conta adicionada com sucesso!", "success")
     return redirect(url_for('index'))
 
 @app.route('/add_credit_card', methods=['POST'])
 @login_required
 def add_credit_card():
-    user_data = data.get(session['username'], {})
-    user_data.setdefault('credit_cards', []).append({'id': str(uuid.uuid4()), 'name': request.form['name']})
+    db = get_db()
+    user_id = session['user_id']
+    name = request.form['name']
+    db.execute('INSERT INTO credit_cards (user_id, name) VALUES (?, ?)', (user_id, name))
+    db.commit()
     flash("Cartão de Crédito adicionado com sucesso!", "success")
     return redirect(url_for('index'))
 
 @app.route('/add_payment_method', methods=['POST'])
 @login_required
 def add_payment_method():
-    user_data = data.get(session['username'], {})
-    user_data.setdefault('payment_methods', []).append({'id': str(uuid.uuid4()), 'name': request.form['name']})
+    db = get_db()
+    user_id = session['user_id']
+    name = request.form['name']
+    db.execute('INSERT INTO payment_methods (user_id, name) VALUES (?, ?)', (user_id, name))
+    db.commit()
     flash("Forma de Pagamento adicionada com sucesso!", "success")
     return redirect(url_for('index'))
 
 @app.route('/add_client', methods=['POST'])
 @login_required
 def add_client():
-    user_data = data.get(session['username'], {})
-    user_data.setdefault('clients', []).append({'id': str(uuid.uuid4()), 'name': request.form['name']})
+    db = get_db()
+    user_id = session['user_id']
+    name = request.form['name']
+    db.execute('INSERT INTO clients (user_id, name) VALUES (?, ?)', (user_id, name))
+    db.commit()
     flash("Cliente adicionado com sucesso!", "success")
     return redirect(url_for('index'))
 
 @app.route('/add_supplier', methods=['POST'])
 @login_required
 def add_supplier():
-    user_data = data.get(session['username'], {})
-    user_data.setdefault('suppliers', []).append({'id': str(uuid.uuid4()), 'name': request.form['name']})
+    db = get_db()
+    user_id = session['user_id']
+    name = request.form['name']
+    db.execute('INSERT INTO suppliers (user_id, name) VALUES (?, ?)', (user_id, name))
+    db.commit()
     flash("Fornecedor adicionado com sucesso!", "success")
     return redirect(url_for('index'))
 
-# --- Ponto de Entrada da Aplicação ---
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True)

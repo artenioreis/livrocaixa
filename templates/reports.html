@@ -75,7 +75,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for tx in income_transactions %}
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') if tx.date else '---' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tx.description }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">R$ {{ "%.2f"|format(tx.amount) }}</td>
                     </tr>
@@ -104,7 +104,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for tx in expense_transactions %}
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') if tx.date else '---' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tx.description }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">R$ {{ "%.2f"|format(tx.amount) }}</td>
                     </tr>

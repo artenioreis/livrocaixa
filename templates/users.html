@@ -52,19 +52,19 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        {% for username, user_data in users.items() %}
+                        {% for user in users %}
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ username }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ user_data.email }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ user['username'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ user['email'] }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                    {{ 'bg-blue-100 text-blue-800' if user_data.role == 'admin' else 'bg-gray-100 text-gray-800' }}">
-                                    {{ user_data.role|capitalize }}
+                                    {{ 'bg-blue-100 text-blue-800' if user['role'] == 'admin' else 'bg-gray-100 text-gray-800' }}">
+                                    {{ user['role']|capitalize }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="{{ url_for('admin_reset_password', username=username) }}" class="text-yellow-600 hover:text-yellow-900 mr-3">Redefinir Senha</a>
-                                <a href="{{ url_for('delete_user', username=username) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir o usuário {{ username }}? Esta ação não pode ser desfeita.');">Excluir</a>
+                                <a href="{{ url_for('admin_reset_password', username=user['username']) }}" class="text-yellow-600 hover:text-yellow-900 mr-3">Redefinir Senha</a>
+                                <a href="{{ url_for('delete_user', user_id=user['id']) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir o usuário {{ user['username'] }}? Esta ação não pode ser desfeita.');">Excluir</a>
                             </td>
                         </tr>
                         {% else %}
