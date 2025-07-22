@@ -528,7 +528,6 @@ def add_category():
     db = get_db()
     user_id = session['user_id']
     name = request.form['name']
-    # CORREÇÃO: Adiciona um grupo padrão para novas categorias.
     db.execute('INSERT INTO categories (user_id, name, category_group) VALUES (?, ?, ?)', (user_id, name, 'Categorias Personalizadas'))
     db.commit()
     flash("Categoria adicionada com sucesso!", "success")
