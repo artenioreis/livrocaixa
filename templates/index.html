@@ -26,14 +26,12 @@
 
 <!-- Seção dos Gráficos -->
 <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-    <!-- CORREÇÃO: Adicionado um div com altura fixa para conter o gráfico e evitar que estique. -->
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 flex flex-col">
         <h3 class="text-xl font-bold text-gray-800 mb-4">Despesas por Categoria</h3>
         <div class="relative h-80">
             <canvas id="expensesPieChart"></canvas>
         </div>
     </div>
-    <!-- CORREÇÃO: Adicionado um div com altura fixa para conter o gráfico e evitar que estique. -->
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 flex flex-col">
         <h3 class="text-xl font-bold text-gray-800 mb-4">Fluxo de Caixa (Últimos 6 Meses)</h3>
         <div class="relative h-80">
@@ -102,41 +100,39 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for tx in transactions %}
                 <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tx.description }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ 'text-green-600' if tx.type == 'receita' else 'text-red-600' }}">
-                        {{ '+ ' if tx.type == 'receita' else '- ' }}R$ {{ "%.2f"|format(tx.amount) }}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tx['description'] }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ 'text-green-600' if tx['type'] == 'receita' else 'text-red-600' }}">
+                        {{ '+ ' if tx['type'] == 'receita' else '- ' }}R$ {{ "%.2f"|format(tx['amount']) }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.client_supplier or '---' }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.due_date.strftime('%d/%m/%Y') if tx.due_date else 'N/A' }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.date.strftime('%d/%m/%Y') if tx.date else '---' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx['client_supplier'] or '---' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx['due_date'].strftime('%d/%m/%Y') if tx['due_date'] else 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx['date'].strftime('%d/%m/%Y') if tx['date'] else '---' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {{ 'bg-green-100 text-green-800' if tx.status in ['pago', 'recebido'] else 'bg-yellow-100 text-yellow-800' }}">
-                            {{ tx.status|capitalize }}
+                            {{ 'bg-green-100 text-green-800' if tx['status'] in ['pago', 'recebido'] else 'bg-yellow-100 text-yellow-800' }}">
+                            {{ tx['status']|capitalize }}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center">
                         <a href="#" class="text-blue-600 hover:text-blue-900 mr-3 edit-transaction-btn"
-                           data-id="{{ tx.id }}"
-                           data-description="{{ tx.description }}"
-                           data-amount="{{ tx.amount }}"
-                           data-due-date="{{ tx.due_date.strftime('%Y-%m-%d') if tx.due_date else '' }}"
-                           data-payment-date="{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}"
-                           data-type="{{ tx.type }}"
-                           data-category="{{ tx.category }}"
-                           data-status="{{ tx.status }}"
-                           data-client-supplier="{{ tx.client_supplier or '' }}">
+                           data-id="{{ tx['id'] }}"
+                           data-description="{{ tx['description'] }}"
+                           data-amount="{{ tx['amount'] }}"
+                           data-due-date="{{ tx['due_date'].strftime('%Y-%m-%d') if tx['due_date'] else '' }}"
+                           data-payment-date="{{ tx['date'].strftime('%Y-%m-%d') if tx['date'] else '' }}"
+                           data-type="{{ tx['type'] }}"
+                           data-category="{{ tx['category'] }}"
+                           data-status="{{ tx['status'] }}"
+                           data-client-supplier="{{ tx['client_supplier'] or '' }}">
                            Editar
                         </a>
-                        {% if tx.status == 'pendente' %}
-                        <a href="{{ url_for('update_status', tx_id=tx.id) }}" class="text-green-600 hover:text-green-900 mr-3">Pagar</a>
-                        {% endif %}
-                        <a href="{{ url_for('delete_transaction', tx_id=tx.id) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir esta transação?');">Excluir</a>
+                        <a href="{{ url_for('update_status', tx_id=tx['id']) }}" class="text-green-600 hover:text-green-900 mr-3">Pagar</a>
+                        <a href="{{ url_for('delete_transaction', tx_id=tx['id']) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir esta transação?');">Excluir</a>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" class="px-6 py-12 text-center text-gray-500">Nenhuma transação encontrada.</td>
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">Nenhuma transação encontrada.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -204,8 +200,12 @@
                 <div>
                     <label for="category" class="block text-base font-semibold text-gray-700">Categoria</label>
                     <select id="category" name="category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        {% for cat in categories %}
-                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                        {% for group, cats in categories_grouped.items() %}
+                            <optgroup label="{{ group }}">
+                                {% for cat_name in cats %}
+                                    <option value="{{ cat_name }}">{{ cat_name }}</option>
+                                {% endfor %}
+                            </optgroup>
                         {% endfor %}
                     </select>
                 </div>
@@ -280,8 +280,12 @@
                 <div>
                     <label for="edit_category" class="block text-base font-semibold text-gray-700">Categoria</label>
                     <select id="edit_category" name="category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        {% for cat in categories %}
-                        <option value="{{ cat.name }}">{{ cat.name }}</option>
+                        {% for group, cats in categories_grouped.items() %}
+                            <optgroup label="{{ group }}">
+                                {% for cat_name in cats %}
+                                    <option value="{{ cat_name }}">{{ cat_name }}</option>
+                                {% endfor %}
+                            </optgroup>
                         {% endfor %}
                     </select>
                 </div>

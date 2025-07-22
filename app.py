@@ -9,16 +9,45 @@
 
 import sqlite3
 import uuid
+import copy
 from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify
 from collections import defaultdict
 
 # --- Configuração da Aplicação e Banco de Dados ---
 DATABASE = 'livro_caixa.db'
 app = Flask(__name__)
 app.secret_key = 'sua-chave-secreta-super-segura-aqui'
+
+DEFAULT_CATEGORIES = {
+    "Receitas (Entradas de Dinheiro)": [
+        "Vendas de Produtos/Serviços", "Recebimento de Duplicatas", "Juros Recebidos",
+        "Receitas Financeiras", "Aportes de Capital", "Empréstimos Obtidos",
+        "Recebimento de Aluguéis", "Devolução de Impostos", "Doações/Patrocínios",
+        "Outras Receitas"
+    ],
+    "Despesas (Saídas de Dinheiro)": [
+        "Compras de Mercadorias/Insumos", "Pagamento de Fornecedores", "Salários e Encargos",
+        "Aluguel/Leasing", "Contas de Luz, Água, Internet, Telefone", "Impostos e Taxas",
+        "Manutenção e Reparos", "Seguros", "Serviços Terceirizados",
+        "Combustível/Transporte", "Outras Despesas Operacionais"
+    ],
+    "Movimentações Financeiras": [
+        "Depósitos Bancários", "Saque em Espécie", "Transferências entre Contas",
+        "Aplicações Financeiras", "Resgate de Investimentos", "Pagamento de Empréstimos",
+        "Recebimento de Empréstimos"
+    ],
+    "Ajustes e Regularizações": [
+        "Ajustes de Caixa (Sobra/Falta)", "Estornos de Lançamentos",
+        "Correção de Valores", "Provisões para Perdas"
+    ],
+    "Categorias Específicas": [
+        "Retiradas do Proprietário (Pró-labore/Distribuição de Lucros)",
+        "Doações Realizadas", "Multas e Juros Pagos", "Reembolsos de Funcionários"
+    ]
+}
 
 def get_db():
     """Abre uma nova conexão com o banco de dados se não houver uma."""
@@ -52,7 +81,18 @@ def init_db():
                 ('admin', 'artenio.reis@gmail.com', admin_password, 'admin')
             )
             db.commit()
-            print("Banco de dados inicializado e usuário 'admin' criado.")
+            
+            admin_user = cursor.execute("SELECT id FROM users WHERE username = ?", ('admin',)).fetchone()
+            if admin_user:
+                admin_id = admin_user['id']
+                for group, categories in DEFAULT_CATEGORIES.items():
+                    for category_name in categories:
+                        cursor.execute(
+                            "INSERT INTO categories (user_id, name, category_group) VALUES (?, ?, ?)",
+                            (admin_id, category_name, group)
+                        )
+                db.commit()
+            print("Banco de dados inicializado e usuário 'admin' criado com categorias padrão.")
 
 # --- Funções Auxiliares e Decorators ---
 def parse_date(date_val):
@@ -172,6 +212,18 @@ def manage_users():
                 (username, email, generate_password_hash(password), role)
             )
             db.commit()
+            
+            new_user = db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+            if new_user:
+                new_user_id = new_user['id']
+                for group, categories in DEFAULT_CATEGORIES.items():
+                    for category_name in categories:
+                        db.execute(
+                            "INSERT INTO categories (user_id, name, category_group) VALUES (?, ?, ?)",
+                            (new_user_id, category_name, group)
+                        )
+                db.commit()
+
             flash(f"Usuário '{username}' criado com sucesso!", "success")
         return redirect(url_for('manage_users'))
 
@@ -230,7 +282,12 @@ def index():
     
     balance = total_income - total_expense
     
-    categories = db.execute('SELECT name FROM categories WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    categories_from_db = db.execute('SELECT name, category_group FROM categories WHERE user_id = ? ORDER BY category_group, name', (user_id,)).fetchall()
+    
+    categories_grouped = defaultdict(list)
+    for cat in categories_from_db:
+        categories_grouped[cat['category_group']].append(cat['name'])
+
     clients = db.execute('SELECT name FROM clients WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
     suppliers = db.execute('SELECT name FROM suppliers WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
 
@@ -281,7 +338,7 @@ def index():
         total_income=total_income,
         total_expense=total_expense,
         today_date=datetime.now().strftime('%Y-%m-%d'),
-        categories=categories,
+        categories_grouped=categories_grouped,
         clients=clients,
         suppliers=suppliers,
         pie_chart_data=pie_chart_data,
@@ -471,7 +528,8 @@ def add_category():
     db = get_db()
     user_id = session['user_id']
     name = request.form['name']
-    db.execute('INSERT INTO categories (user_id, name) VALUES (?, ?)', (user_id, name))
+    # CORREÇÃO: Adiciona um grupo padrão para novas categorias.
+    db.execute('INSERT INTO categories (user_id, name, category_group) VALUES (?, ?, ?)', (user_id, name, 'Categorias Personalizadas'))
     db.commit()
     flash("Categoria adicionada com sucesso!", "success")
     return redirect(url_for('index'))
