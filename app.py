@@ -13,8 +13,9 @@ import copy
 from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify, send_file
 from collections import defaultdict
+import os
 
 # --- Configuração da Aplicação e Banco de Dados ---
 DATABASE = 'livro_caixa.db'
@@ -253,6 +254,17 @@ def admin_reset_password(username):
     else:
         flash("Usuário não encontrado.", "danger")
     return redirect(url_for('manage_users'))
+
+# --- Rota de Backup ---
+@app.route('/backup_db')
+@admin_required
+def backup_db():
+    """Envia o ficheiro da base de dados como um anexo para download."""
+    try:
+        return send_file(DATABASE, as_attachment=True)
+    except Exception as e:
+        flash(f"Erro ao gerar o backup: {e}", "danger")
+        return redirect(url_for('index'))
 
 # --- Rotas da Aplicação Financeira ---
 @app.route('/')

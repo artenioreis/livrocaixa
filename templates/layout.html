@@ -11,7 +11,11 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            background-image: url('https://pub-static.fotor.com/assets/bg/bf9a415f-b758-4c0d-a820-334370772ec3.jpg');
+            /* CORREÇÃO: Imagem de fundo azul claro adicionada */
+            background-image: url('https://t4.ftcdn.net/jpg/10/84/01/67/360_F_1084016717_WKvxIu5devPI2Pbt7BzKawvllgcO9buZ.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
         .modal { display: none; }
         .modal.is-open { display: flex; }
@@ -47,6 +51,7 @@
                         <a href="{{ url_for('reports') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Relatórios</a>
                         {% if session.role == 'admin' %}
                         <a href="{{ url_for('manage_users') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Gerenciar Usuários</a>
+                        <a href="{{ url_for('backup_db') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Backup do Banco de Dados</a>
                         {% endif %}
                         <span class="text-gray-500 mx-4">|</span>
                         <span class="text-gray-700 font-medium mr-3">Olá, {{ session.username }}</span>
