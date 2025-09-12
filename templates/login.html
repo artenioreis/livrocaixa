@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,18 +15,17 @@
         }
     </style>
 </head>
-<body class="bg-gray-200">
+<body class="bg-gray-200 dark:bg-gray-900">
 
     <div class="flex items-center justify-center min-h-screen bg-black bg-opacity-50">
         <div class="w-full max-w-md">
-            <!-- Exibição de mensagens flash -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
                         <div class="p-4 mb-4 text-sm rounded-lg
-                            {% if category == 'danger' %} bg-red-100 text-red-700
-                            {% elif category == 'success' %} bg-green-100 text-green-700
-                            {% else %} bg-blue-100 text-blue-700 {% endif %}"
+                            {% if category == 'danger' %} bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200
+                            {% elif category == 'success' %} bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200
+                            {% else %} bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 {% endif %}"
                             role="alert">
                             {{ message|safe }}
                         </div>
@@ -34,22 +33,22 @@
                 {% endif %}
             {% endwith %}
 
-            <div class="bg-white/90 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-gray-200">
-                <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">Acessar Sistema</h2>
+            <div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-gray-200 mb-8">Acessar Sistema</h2>
                 <form method="post" action="{{ url_for('login') }}">
                     <div class="mb-4">
-                        <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
+                        <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Usuário</label>
                         <input type="text" name="username" id="username" required
-                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     </div>
                     <div class="mb-6">
-                        <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+                        <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
                         <input type="password" name="password" id="password" required
-                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     </div>
                     <div class="flex items-center justify-between mb-6">
                         <div class="text-sm">
-                            <a href="{{ url_for('forgot_password') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                            <a href="{{ url_for('forgot_password') }}" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
                                 Esqueceu a senha?
                             </a>
                         </div>
@@ -64,5 +63,17 @@
             </div>
         </div>
     </div>
+    <script>
+        // Aplica o tema salvo ao carregar a página de login
+        let savedTheme = localStorage.getItem('color-theme');
+        if (!savedTheme) {
+            savedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 </body>
 </html>

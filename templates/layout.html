@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Livro Caixa{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Inclusão da biblioteca Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            /* CORREÇÃO: Imagem de fundo azul claro adicionada */
+        }
+        .light-theme-bg {
             background-image: url('https://t4.ftcdn.net/jpg/10/84/01/67/360_F_1084016717_WKvxIu5devPI2Pbt7BzKawvllgcO9buZ.jpg');
             background-size: cover;
             background-position: center;
@@ -34,31 +34,41 @@
             thead { display: table-header-group; }
             tbody tr { page-break-inside: avoid; }
             tfoot { display: table-footer-group; }
+            .overflow-x-auto {
+                overflow-x: visible !important;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 light-theme-bg">
 
-    <nav class="bg-white shadow-md noprint">
+    <nav class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md noprint sticky top-0 z-50">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
-                    <a href="{{ url_for('index') }}" class="text-2xl font-bold text-blue-600">Livro Caixa</a>
+                    <a href="{{ url_for('index') }}" class="text-2xl font-bold text-blue-600 dark:text-blue-400">Livro Caixa</a>
                 </div>
                 <div class="flex items-center">
                     {% if session.username %}
-                        <a href="{{ url_for('index') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                        <a href="{{ url_for('reports') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Relatórios</a>
+                        <a href="{{ url_for('index') }}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                        <a href="{{ url_for('lancamentos') }}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Lançamentos</a>
+                        <a href="{{ url_for('cadastro') }}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Cadastros</a>
+                        <a href="{{ url_for('reports') }}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Relatórios</a>
                         {% if session.role == 'admin' %}
-                        <a href="{{ url_for('manage_users') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Gerenciar Usuários</a>
-                        <a href="{{ url_for('backup_db') }}" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Backup do Banco de Dados</a>
+                        <a href="{{ url_for('manage_users') }}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Gerenciar Usuários</a>
+                        <a href="{{ url_for('backup_db') }}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Backup do BD</a>
                         {% endif %}
-                        <span class="text-gray-500 mx-4">|</span>
-                        <span class="text-gray-700 font-medium mr-3">Olá, {{ session.username }}</span>
+                        <span class="text-gray-500 dark:text-gray-600 mx-4">|</span>
+                        <span class="text-gray-800 dark:text-gray-200 font-medium mr-3">Olá, {{ session.username }}</span>
                         <a href="{{ url_for('logout') }}" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 text-sm">Logout</a>
                     {% else %}
                         <a href="{{ url_for('login') }}" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-sm">Login</a>
                     {% endif %}
+                    
+                    <button id="theme-toggle" class="ml-4 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600">
+                        <svg id="theme-toggle-dark-icon" class="hidden h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="hidden h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -70,9 +80,9 @@
                 {% if messages %}
                     {% for category, message in messages %}
                         <div class="p-4 mb-4 text-sm rounded-lg
-                            {% if category == 'danger' %} bg-red-100 text-red-700
-                            {% elif category == 'success' %} bg-green-100 text-green-700
-                            {% else %} bg-blue-100 text-blue-700 {% endif %}"
+                            {% if category == 'danger' %} bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                            {% elif category == 'success' %} bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                            {% else %} bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 {% endif %}"
                             role="alert">
                             {{ message|safe }}
                         </div>
@@ -85,6 +95,42 @@
     </main>
 
     <script>
+        // Theme switcher logic
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const body = document.body;
+
+        // Function to apply theme
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+                body.classList.remove('light-theme-bg');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+                body.classList.add('light-theme-bg');
+            }
+        }
+
+        // Check for saved theme in localStorage or use system preference
+        let savedTheme = localStorage.getItem('color-theme');
+        if (!savedTheme) {
+            savedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        applyTheme(savedTheme);
+
+        themeToggleBtn.addEventListener('click', function() {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const newTheme = isDarkMode ? 'light' : 'dark';
+            applyTheme(newTheme);
+            localStorage.setItem('color-theme', newTheme);
+        });
+
+
         function openModal(modalId) {
             const openModals = document.querySelectorAll('.modal.is-open');
             openModals.forEach(modal => modal.classList.remove('is-open'));
@@ -143,7 +189,6 @@
         });
     </script>
     
-    <!-- Bloco para scripts específicos da página (como os gráficos) -->
     {% block page_scripts %}{% endblock %}
 </body>
 </html>

@@ -272,17 +272,6 @@ def backup_db():
 def index():
     db = get_db()
     user_id = session['user_id']
-    
-    transactions_from_db = db.execute(
-        'SELECT * FROM transactions WHERE user_id = ? ORDER BY due_date DESC', (user_id,)
-    ).fetchall()
-
-    transactions = []
-    for tx_row in transactions_from_db:
-        tx_dict = dict(tx_row)
-        tx_dict['date'] = parse_date(tx_dict['date'])
-        tx_dict['due_date'] = parse_date(tx_dict['due_date'])
-        transactions.append(tx_dict)
 
     total_income = db.execute(
         "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'receita' AND status IN ('pago', 'recebido')", (user_id,)
@@ -292,16 +281,15 @@ def index():
         "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'despesa' AND status = 'pago'", (user_id,)
     ).fetchone()[0] or 0.0
     
-    balance = total_income - total_expense
+    total_pending_income = db.execute(
+        "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'receita' AND status = 'pendente'", (user_id,)
+    ).fetchone()[0] or 0.0
     
-    categories_from_db = db.execute('SELECT name, category_group FROM categories WHERE user_id = ? ORDER BY category_group, name', (user_id,)).fetchall()
-    
-    categories_grouped = defaultdict(list)
-    for cat in categories_from_db:
-        categories_grouped[cat['category_group']].append(cat['name'])
+    total_pending_expense = db.execute(
+        "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'despesa' AND status = 'pendente'", (user_id,)
+    ).fetchone()[0] or 0.0
 
-    clients = db.execute('SELECT name FROM clients WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
-    suppliers = db.execute('SELECT name FROM suppliers WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    balance = total_income - total_expense
 
     expenses_by_category = db.execute(
         "SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'despesa' AND status = 'pago' GROUP BY category",
@@ -345,16 +333,48 @@ def index():
 
     return render_template(
         'index.html', 
-        transactions=transactions,
         balance=balance,
         total_income=total_income,
         total_expense=total_expense,
+        total_pending_income=total_pending_income,
+        total_pending_expense=total_pending_expense,
+        pie_chart_data=pie_chart_data,
+        line_chart_data=line_chart_data_final
+    )
+
+@app.route('/lancamentos')
+@login_required
+def lancamentos():
+    db = get_db()
+    user_id = session['user_id']
+    
+    transactions_from_db = db.execute(
+        'SELECT * FROM transactions WHERE user_id = ? ORDER BY due_date DESC', (user_id,)
+    ).fetchall()
+
+    transactions = []
+    for tx_row in transactions_from_db:
+        tx_dict = dict(tx_row)
+        tx_dict['date'] = parse_date(tx_dict['date'])
+        tx_dict['due_date'] = parse_date(tx_dict['due_date'])
+        transactions.append(tx_dict)
+
+    categories_from_db = db.execute('SELECT name, category_group FROM categories WHERE user_id = ? ORDER BY category_group, name', (user_id,)).fetchall()
+    
+    categories_grouped = defaultdict(list)
+    for cat in categories_from_db:
+        categories_grouped[cat['category_group']].append(cat['name'])
+
+    clients = db.execute('SELECT name FROM clients WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    suppliers = db.execute('SELECT name FROM suppliers WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+
+    return render_template(
+        'lancamentos.html',
+        transactions=transactions,
         today_date=datetime.now().strftime('%Y-%m-%d'),
         categories_grouped=categories_grouped,
         clients=clients,
-        suppliers=suppliers,
-        pie_chart_data=pie_chart_data,
-        line_chart_data=line_chart_data_final
+        suppliers=suppliers
     )
 
 @app.route('/add', methods=['POST'])
@@ -380,7 +400,7 @@ def add_transaction():
     )
     db.commit()
     flash("Lançamento adicionado com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('lancamentos'))
 
 @app.route('/reports', methods=['GET'])
 @login_required
@@ -468,7 +488,7 @@ def edit_transaction(tx_id):
     transaction = db.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (tx_id, user_id)).fetchone()
     if transaction is None:
         flash("Lançamento não encontrado ou não pertence a você.", "danger")
-        return redirect(url_for('index'))
+        return redirect(url_for('lancamentos'))
 
     description = request.form['description']
     amount = float(request.form['amount'])
@@ -493,7 +513,7 @@ def edit_transaction(tx_id):
     )
     db.commit()
     flash("Lançamento atualizado com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('lancamentos'))
 
 @app.route('/update_status/<int:tx_id>')
 @login_required
@@ -504,7 +524,7 @@ def update_status(tx_id):
     transaction = db.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (tx_id, user_id)).fetchone()
     if transaction is None:
         flash("Lançamento não encontrado ou não pertence a você.", "danger")
-        return redirect(url_for('index'))
+        return redirect(url_for('lancamentos'))
 
     status = 'recebido' if transaction['type'] == 'receita' else 'pago'
     payment_date = datetime.now().strftime('%Y-%m-%d')
@@ -515,7 +535,7 @@ def update_status(tx_id):
     )
     db.commit()
     flash("Status do lançamento atualizado para pago.", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('lancamentos'))
 
 @app.route('/delete/<int:tx_id>')
 @login_required
@@ -531,9 +551,32 @@ def delete_transaction(tx_id):
     else:
         flash("Lançamento não encontrado ou não pertence a você.", "danger")
         
-    return redirect(url_for('index'))
+    return redirect(url_for('lancamentos'))
 
 # --- Rotas de Cadastro ---
+@app.route('/cadastro')
+@login_required
+def cadastro():
+    db = get_db()
+    user_id = session['user_id']
+
+    categories = db.execute('SELECT * FROM categories WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    accounts = db.execute('SELECT * FROM accounts WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    credit_cards = db.execute('SELECT * FROM credit_cards WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    payment_methods = db.execute('SELECT * FROM payment_methods WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    clients = db.execute('SELECT * FROM clients WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+    suppliers = db.execute('SELECT * FROM suppliers WHERE user_id = ? ORDER BY name', (user_id,)).fetchall()
+
+    return render_template('cadastro.html', 
+        categories=categories,
+        accounts=accounts,
+        credit_cards=credit_cards,
+        payment_methods=payment_methods,
+        clients=clients,
+        suppliers=suppliers
+    )
+
+# --- Ações de Adicionar Itens de Cadastro ---
 @app.route('/add_category', methods=['POST'])
 @login_required
 def add_category():
@@ -543,7 +586,7 @@ def add_category():
     db.execute('INSERT INTO categories (user_id, name, category_group) VALUES (?, ?, ?)', (user_id, name, 'Categorias Personalizadas'))
     db.commit()
     flash("Categoria adicionada com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('cadastro'))
 
 @app.route('/add_account', methods=['POST'])
 @login_required
@@ -554,7 +597,7 @@ def add_account():
     db.execute('INSERT INTO accounts (user_id, name) VALUES (?, ?)', (user_id, name))
     db.commit()
     flash("Conta adicionada com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('cadastro'))
 
 @app.route('/add_credit_card', methods=['POST'])
 @login_required
@@ -565,7 +608,7 @@ def add_credit_card():
     db.execute('INSERT INTO credit_cards (user_id, name) VALUES (?, ?)', (user_id, name))
     db.commit()
     flash("Cartão de Crédito adicionado com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('cadastro'))
 
 @app.route('/add_payment_method', methods=['POST'])
 @login_required
@@ -576,7 +619,7 @@ def add_payment_method():
     db.execute('INSERT INTO payment_methods (user_id, name) VALUES (?, ?)', (user_id, name))
     db.commit()
     flash("Forma de Pagamento adicionada com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('cadastro'))
 
 @app.route('/add_client', methods=['POST'])
 @login_required
@@ -587,7 +630,7 @@ def add_client():
     db.execute('INSERT INTO clients (user_id, name) VALUES (?, ?)', (user_id, name))
     db.commit()
     flash("Cliente adicionado com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('cadastro'))
 
 @app.route('/add_supplier', methods=['POST'])
 @login_required
@@ -598,7 +641,89 @@ def add_supplier():
     db.execute('INSERT INTO suppliers (user_id, name) VALUES (?, ?)', (user_id, name))
     db.commit()
     flash("Fornecedor adicionado com sucesso!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('cadastro'))
+
+# --- Ações de Editar e Excluir Itens de Cadastro ---
+@app.route('/edit_item/<item_type>/<int:item_id>', methods=['POST'])
+@login_required
+def edit_item(item_type, item_id):
+    db = get_db()
+    user_id = session['user_id']
+    new_name = request.form['name']
+    
+    table_map = {
+        'category': 'categories',
+        'account': 'accounts',
+        'credit_card': 'credit_cards',
+        'payment_method': 'payment_methods',
+        'client': 'clients',
+        'supplier': 'suppliers'
+    }
+    table_name = table_map.get(item_type)
+    if not table_name:
+        flash("Tipo de item inválido.", "danger")
+        return redirect(url_for('cadastro'))
+
+    # Pega o nome antigo antes de atualizar
+    old_item = db.execute(f'SELECT name FROM {table_name} WHERE id = ? AND user_id = ?', (item_id, user_id)).fetchone()
+    if old_item:
+        old_name = old_item['name']
+        
+        # Atualiza o nome na tabela principal
+        db.execute(f'UPDATE {table_name} SET name = ? WHERE id = ?', (new_name, item_id))
+        
+        # Se for categoria, cliente ou fornecedor, atualiza na tabela de transações
+        if item_type == 'category':
+            db.execute('UPDATE transactions SET category = ? WHERE category = ? AND user_id = ?', (new_name, old_name, user_id))
+        elif item_type in ['client', 'supplier']:
+            db.execute('UPDATE transactions SET client_supplier = ? WHERE client_supplier = ? AND user_id = ?', (new_name, old_name, user_id))
+            
+        db.commit()
+        flash("Item atualizado com sucesso!", "success")
+    else:
+        flash("Item não encontrado.", "danger")
+        
+    return redirect(url_for('cadastro'))
+
+@app.route('/delete_item/<item_type>/<int:item_id>')
+@login_required
+def delete_item(item_type, item_id):
+    db = get_db()
+    user_id = session['user_id']
+    
+    table_map = {
+        'category': 'categories', 'account': 'accounts', 'credit_card': 'credit_cards',
+        'payment_method': 'payment_methods', 'client': 'clients', 'supplier': 'suppliers'
+    }
+    table_name = table_map.get(item_type)
+    if not table_name:
+        flash("Tipo de item inválido.", "danger")
+        return redirect(url_for('cadastro'))
+
+    item_to_delete = db.execute(f'SELECT name FROM {table_name} WHERE id = ? AND user_id = ?', (item_id, user_id)).fetchone()
+    if not item_to_delete:
+        flash("Item não encontrado.", "danger")
+        return redirect(url_for('cadastro'))
+
+    # Verifica se o item está em uso
+    is_in_use = False
+    item_name = item_to_delete['name']
+    if item_type == 'category':
+        usage = db.execute('SELECT id FROM transactions WHERE category = ? AND user_id = ?', (item_name, user_id)).fetchone()
+        if usage: is_in_use = True
+    elif item_type in ['client', 'supplier']:
+        usage = db.execute('SELECT id FROM transactions WHERE client_supplier = ? AND user_id = ?', (item_name, user_id)).fetchone()
+        if usage: is_in_use = True
+
+    if is_in_use:
+        flash(f"Não é possível excluir '{item_name}', pois está vinculado a um ou mais lançamentos.", "danger")
+    else:
+        db.execute(f'DELETE FROM {table_name} WHERE id = ?', (item_id,))
+        db.commit()
+        flash(f"'{item_name}' foi excluído com sucesso.", "success")
+
+    return redirect(url_for('cadastro'))
+
 
 if __name__ == '__main__':
     init_db()

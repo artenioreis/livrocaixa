@@ -1,0 +1,156 @@
+<div id="addTransactionModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-70 items-center justify-center p-4 noprint">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl p-8 border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Novo Lançamento</h2>
+        <form action="{{ url_for('add_transaction') }}" method="post">
+            <div class="mb-4">
+                <label for="description" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Descrição</label>
+                <input type="text" id="description" name="description" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            </div>
+            <div class="mb-4">
+                <label for="amount" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Valor (R$)</label>
+                <input type="number" step="0.01" id="amount" name="amount" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="due_date" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Data de Vencimento</label>
+                    <input type="date" id="due_date" name="due_date" required value="{{ today_date }}" class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+                <div>
+                    <label for="date" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Data do Pagamento</label>
+                    <input type="date" id="date" name="date" class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="type" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Tipo</label>
+                    <select id="type" name="type" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <option value="despesa">Despesa</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="category" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Categoria</label>
+                    <select id="category" name="category" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        {% for group, cats in categories_grouped.items() %}
+                            <optgroup label="{{ group }}">
+                                {% for cat_name in cats %}
+                                    <option value="{{ cat_name }}">{{ cat_name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="client_supplier" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Cliente / Fornecedor</label>
+                <select id="client_supplier" name="client_supplier" class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <option value="">Nenhum</option>
+                    {% if clients or suppliers %}
+                        <optgroup label="Clientes">
+                            {% for client in clients %}
+                            <option value="{{ client.name }}">{{ client.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Fornecedores">
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% else %}
+                        <option value="" disabled>Nenhum cliente ou fornecedor cadastrado</option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="mb-6">
+                <div class="flex items-center">
+                    <input id="is_paid" name="is_paid" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="is_paid" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                        Marcar como pago/recebido
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 mt-8">
+                <button type="button" onclick="closeModal('addTransactionModal')" class="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="editTransactionModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-70 items-center justify-center p-4 noprint">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl p-8 border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Editar Lançamento</h2>
+        <form id="editTransactionForm" method="post"> <div class="mb-4">
+                <label for="edit_description" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Descrição</label>
+                <input type="text" id="edit_description" name="description" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            </div>
+            <div class="mb-4">
+                <label for="edit_amount" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Valor (R$)</label>
+                <input type="number" step="0.01" id="edit_amount" name="amount" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="edit_due_date" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Data de Vencimento</label>
+                    <input type="date" id="edit_due_date" name="due_date" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+                <div>
+                    <label for="edit_date" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Data do Pagamento</label>
+                    <input type="date" id="edit_date" name="date" class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="edit_type" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Tipo</label>
+                    <select id="edit_type" name="type" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <option value="despesa">Despesa</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="edit_category" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Categoria</label>
+                    <select id="edit_category" name="category" required class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        {% for group, cats in categories_grouped.items() %}
+                            <optgroup label="{{ group }}">
+                                {% for cat_name in cats %}
+                                    <option value="{{ cat_name }}">{{ cat_name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="edit_client_supplier" class="block text-base font-semibold text-gray-700 dark:text-gray-300">Cliente / Fornecedor</label>
+                <select id="edit_client_supplier" name="client_supplier" class="mt-2 block w-full border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <option value="">Nenhum</option>
+                    {% if clients or suppliers %}
+                        <optgroup label="Clientes">
+                            {% for client in clients %}
+                            <option value="{{ client.name }}">{{ client.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Fornecedores">
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% else %}
+                        <option value="" disabled>Nenhum cliente ou fornecedor cadastrado</option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="mb-6">
+                <div class="flex items-center">
+                    <input id="edit_is_paid" name="is_paid" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="edit_is_paid" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                        Marcar como pago/recebido
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 mt-8">
+                <button type="button" onclick="closeModal('editTransactionModal')" class="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
