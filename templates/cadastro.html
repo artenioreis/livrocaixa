@@ -8,26 +8,22 @@
     <p class="text-gray-700 dark:text-gray-300">Gerencie suas categorias, clientes, fornecedores e mais.</p>
 </header>
 
-<section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12">
-    <div onclick="openModal('addCategoryModal')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 transform hover:-translate-y-1">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Categorias</h3>
-    </div>
-    <div onclick="openModal('addAccountModal')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 transform hover:-translate-y-1">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Contas</h3>
-    </div>
-    <div onclick="openModal('addCreditCardModal')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 transform hover:-translate-y-1">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Cartões</h3>
-    </div>
-    <div onclick="openModal('addPaymentMethodModal')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 transform hover:-translate-y-1">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Pagamentos</h3>
-    </div>
-    <div onclick="openModal('addClientModal')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 transform hover:-translate-y-1">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Clientes</h3>
-    </div>
-    <div onclick="openModal('addSupplierModal')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 transform hover:-translate-y-1">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Fornecedores</h3>
-    </div>
+{% macro cadastro_card(modal_id, title, description, border_color) %}
+<div onclick="openModal('{{ modal_id }}')" class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-md border {{ border_color }} hover:bg-gray-100/80 dark:hover:bg-gray-700/80 cursor-pointer transition-colors duration-300 text-center">
+    <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">{{ title }}</h2>
+    <p class="text-sm text-gray-600 dark:text-gray-400">{{ description }}</p>
+</div>
+{% endmacro %}
+
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+    {{ cadastro_card('addCategoryModal', 'Categorias', 'Adicionar ou editar categorias.', 'border-blue-300 dark:border-blue-700') }}
+    {{ cadastro_card('addAccountModal', 'Contas', 'Adicionar ou editar contas bancárias.', 'border-green-300 dark:border-green-700') }}
+    {{ cadastro_card('addCreditCardModal', 'Cartões de Crédito', 'Adicionar ou editar cartões.', 'border-yellow-300 dark:border-yellow-700') }}
+    {{ cadastro_card('addPaymentMethodModal', 'Formas de Pagamento', 'Adicionar ou editar formas de pagamento.', 'border-purple-300 dark:border-purple-700') }}
+    {{ cadastro_card('addClientModal', 'Clientes', 'Adicionar ou editar clientes.', 'border-indigo-300 dark:border-indigo-700') }}
+    {{ cadastro_card('addSupplierModal', 'Fornecedores', 'Adicionar ou editar fornecedores.', 'border-pink-300 dark:border-pink-700') }}
 </section>
+
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     {% macro cadastro_table(title, items, item_type) %}

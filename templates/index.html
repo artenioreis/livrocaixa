@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 
-{% block title %}Dashboard - Livro Caixa{% endblock %}
+{% block title %}Livro Caixa{% endblock %}
 
 {% block content %}
 <header class="mb-8">
-    <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">Dashboard Financeiro</h1>
+    <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">Painel de Indicadores Financeiros</h1>
     <p class="text-gray-700 dark:text-gray-300">A sua visão geral financeira.</p>
 </header>
 
@@ -60,26 +60,42 @@
         // --- Gráfico de Pizza (Despesas) ---
         const pieChartData = {{ pie_chart_data|tojson|safe }};
         const pieCtx = document.getElementById('expensesPieChart').getContext('2d');
-        if (pieChartData.data.length > 0) {
-            new Chart(pieCtx, {
+        let expensesPieChart; // Variável para armazenar a instância do gráfico
+
+        function createOrUpdatePieChart() {
+            if (expensesPieChart) {
+                expensesPieChart.destroy(); // Destrói o gráfico antigo antes de criar um novo
+            }
+            expensesPieChart = new Chart(pieCtx, {
                 type: 'pie',
                 data: {
                     labels: pieChartData.labels,
                     datasets: [{
                         label: 'Despesas por Categoria',
                         data: pieChartData.data,
-                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8B0000', '#00008B', '#006400'],
                         borderWidth: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        animateRotate: true,
+                        animateScale: true,
+                        duration: 2000 // Aumentado para 2000ms (2 segundos) para uma animação mais lenta
+                    },
                     plugins: {
                         legend: { labels: { color: isDarkMode ? '#f3f4f6' : '#1f2937' } }
                     }
                 }
             });
+        }
+
+        if (pieChartData.data.length > 0) {
+            createOrUpdatePieChart();
+            // Recria o gráfico a cada 15 segundos para reativar a animação
+            setInterval(createOrUpdatePieChart, 15000); 
         } else {
             pieCtx.font = "16px Inter";
             pieCtx.fillStyle = isDarkMode ? '#f3f4f6' : '#1f2937';
@@ -109,7 +125,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     animation: {
-                        duration: 400 // Animação suave ao adicionar pontos
+                        duration: 800 // Aumentado para 800ms para uma animação mais lenta
                     },
                     scales: {
                         y: { beginAtZero: true, ticks: { color: isDarkMode ? '#f3f4f6' : '#1f2937' }, grid: { color: isDarkMode ? '#4b5563' : '#e5e7eb' } },
@@ -136,16 +152,16 @@
                         monthIndex++;
                     }
                 }
-                // Define um intervalo para adicionar cada mês
-                const intervalId = setInterval(addNextMonth, 600);
+                // Define um intervalo maior (1000ms) para adicionar cada mês mais lentamente
+                const intervalId = setInterval(addNextMonth, 1000);
 
                 // Para o intervalo quando todos os meses forem adicionados
-                setTimeout(() => clearInterval(intervalId), totalMonths * 600);
+                setTimeout(() => clearInterval(intervalId), totalMonths * 1000);
             }
 
-            // Inicia a animação ao carregar e repete a cada 15 segundos
+            // Inicia a animação ao carregar e repete a cada 15 segundos + a duração da própria animação
             runAnimation();
-            setInterval(runAnimation, 15000 + (fullLineChartData.labels.length * 600)); // 15 segundos + tempo da animação
+            setInterval(runAnimation, 15000 + (fullLineChartData.labels.length * 1000));
 
         } else {
             lineCtx.font = "16px Inter";

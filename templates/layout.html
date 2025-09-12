@@ -12,7 +12,8 @@
             font-family: 'Inter', sans-serif; 
         }
         .light-theme-bg {
-            background-image: url('https://t4.ftcdn.net/jpg/10/84/01/67/360_F_1084016717_WKvxIu5devPI2Pbt7BzKawvllgcO9buZ.jpg');
+            /* Adicionada uma sobreposição escura (15%) para escurecer a imagem de fundo */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15)), url('https://t4.ftcdn.net/jpg/10/84/01/67/360_F_1084016717_WKvxIu5devPI2Pbt7BzKawvllgcO9buZ.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -74,13 +75,18 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 light-theme-bg">
+<body class="bg-gray-200 dark:bg-gray-900 text-gray-900 dark:text-gray-100 light-theme-bg">
 
     <nav class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md noprint sticky top-0 z-50">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
-                    <a href="{{ url_for('index') }}" class="text-2xl font-bold text-blue-600 dark:text-blue-400">Livro Caixa</a>
+                    <a href="{{ url_for('index') }}" class="flex items-center text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        <svg class="h-7 w-7 mr-2 text-blue-500 dark:text-blue-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0-4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0-4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        Livro Caixa
+                    </a>
                 </div>
                 <div class="flex items-center">
                     {% if session.username %}
