@@ -23,20 +23,54 @@
         
         @media print {
             .noprint { display: none !important; }
-            body { font-size: 10pt; background-color: #ffffff !important; background-image: none !important; }
-            main { padding: 0 !important; margin: 0 !important; }
-            .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-            header h1 { font-size: 18pt; }
-            header p { font-size: 12pt; }
-            section, div { box-shadow: none !important; border: none !important; border-radius: 0 !important; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ccc !important; padding: 4px 8px; }
-            thead { display: table-header-group; }
-            tbody tr { page-break-inside: avoid; }
-            tfoot { display: table-footer-group; }
-            .overflow-x-auto {
-                overflow-x: visible !important;
+
+            body {
+                font-size: 10pt;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
             }
+
+            /* Remove restrições de layout para a impressão */
+            main, .container, section, div {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                overflow: visible !important; /* Garante que nada seja cortado */
+            }
+
+            /* Regras específicas para a tabela */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                page-break-inside: auto; /* Permite que a tabela se divida entre as páginas */
+            }
+
+            thead {
+                display: table-header-group; /* Repete o cabeçalho em cada nova página */
+            }
+
+            tfoot {
+                display: table-footer-group;
+            }
+
+            tr {
+                page-break-inside: avoid !important; /* Regra CRÍTICA: impede que uma linha seja cortada ao meio */
+            }
+
+            th, td {
+                border: 1px solid #ccc !important;
+                padding: 4px 8px;
+            }
+            
+            /* Garante que as cores de fundo sejam impressas */
+            .bg-green-100 { background-color: #d1fae5 !important; }
+            .text-green-800 { color: #065f46 !important; }
+            .bg-yellow-100 { background-color: #fef3c7 !important; }
+            .text-yellow-800 { color: #92400e !important; }
         }
     </style>
 </head>
